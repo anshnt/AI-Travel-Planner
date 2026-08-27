@@ -1,4 +1,4 @@
-import { dateRange, planTrip, type PlanRequest, type Place } from '@atp/core';
+import { dateRange, normalizePreferences, planTrip, type PlanRequest, type Place } from '@atp/core';
 import cors from 'cors';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import { ZodError } from 'zod';
@@ -102,8 +102,10 @@ export function createApp(dependencies: AppDependencies = defaultDependencies())
         total: input.budgetTotal,
         currency: destination.currency,
         ...(input.dailyCap === undefined ? {} : { dailyCap: input.dailyCap }),
+        ...(input.foodShare === undefined ? {} : { foodShare: input.foodShare }),
       },
-      preferences: input.preferences ?? defaultPreferencesInput(),
+      // The engine owns the defaults, so the API does not have to restate them.
+      preferences: normalizePreferences(input.preferences ?? defaultPreferencesInput()),
       candidates,
       weather,
       ...(lodging ? { lodging } : {}),

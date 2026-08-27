@@ -10,13 +10,15 @@ call.
 
 ```
 09:12–10:12  Mercat de la Boqueria              free    [walk 12m]
-10:44–12:44  Museu Nacional d'Art de Catalunya  €24     [transit 17m]
-13:13–13:58  Mercat de Sant Antoni              free    [transit 14m]
-14:26–15:56  Gothic Quarter                     free    [transit 13m]
-17:00–17:45  Santa Maria del Mar                €12     [walk 8m]
+10:35–12:05  Gothic Quarter                     free    [walk 8m]
+12:33–13:18  Mercat de Sant Antoni              free    [transit 13m]
+13:36–14:26  Federal Café          (lunch)      €32     [walk 3m]
+15:07–16:52  Park Güell                         €20     [transit 26m]
+17:27–18:42  Casa Batlló                        €70     [transit 20m]
+19:30–20:45  Bar del Pla           (dinner)     €60     [walk 5m]
 
-note: 1h 4m to spare before Santa Maria del Mar opens at 17:00 —
-      its hours today are 10:00–13:00, 17:00–20:00.
+note: Dropped Palau de la Música Catalana to fit lunch at Quimet & Quimet.
+note: Rain likely 13:00 to 16:00 (68%): Federal Café sits under cover for it.
 ```
 
 That last line is the point. The plan knows the church shuts over the afternoon,
@@ -37,15 +39,24 @@ it has to work around.
 | **Budget** | A hard ceiling, not a suggestion: tickets are charged per traveller, fares per party or per person as appropriate, and the trip total is checked on every insertion. |
 | **User preferences** | Interest tags weighted from −1 to +1, pace, the hours you actually want to be out, how far you will walk, which modes you will use, must-sees and categories to skip. |
 | **Weather** | Scored per *slot*, not per day: the planner puts the gallery in the wet hours and the park in the dry ones, moves outdoor stops to the drier of two days, and accounts for heat, cold, wind on exposed sites, and a beach too cold to be worth the trip. |
-| **Restaurants** | Present in the dataset with cuisines, dietary tags and price levels, and deliberately excluded from the sightseeing pool. Meal scheduling is the next piece of work. |
+| **Restaurants** | Booked into breakfast, lunch and dinner windows *after* the route exists, so a restaurant is chosen relative to where you already are. Dietary needs are a hard filter; cuisine, price and rating are scored. Food money is reserved up front so sightseeing cannot spend it. |
 
 ## Why it is built the way it is
 
-The planner is **repeated best-insertion**: on every pass it evaluates every
-unplaced candidate in every position of every day, and commits the one whose
-appeal best justifies the detour it adds. That is slower than filling days
-front-to-back, but it is what produces days that hang together geographically
-instead of criss-crossing the city.
+The planner runs **four passes**:
+
+1. **must-sees**, before the pool competes for the same slots;
+2. **repeated best-insertion** over everything else — every candidate tried in
+   every position of every day, committing the one whose appeal best justifies
+   the detour it adds;
+3. **meals**, once there is a route for a restaurant to sit on;
+4. **rehoming** anything a meal displaced.
+
+Pass 2 is slower than filling days front-to-back, but it is what produces days
+that hang together geographically instead of criss-crossing the city. Pass 3 runs
+*after* pass 2 on purpose: booking lunch first, with nothing else on the map, just
+picks the best-reviewed place in the city and drags the day across town to reach
+it.
 
 Two decisions do most of the work:
 
@@ -55,6 +66,11 @@ Two decisions do most of the work:
 - **Days are re-timed from scratch, never patched.** Every insertion recomputes
   the whole day from its anchor, so a change to the morning correctly ripples
   into every later arrival time.
+
+When a day is too full to take a meal, the planner will drop its least valuable
+stop to make room — but only when the meal is worth most of what it displaces, and
+it says which stop it dropped and why. Eating is not optional in the way a fifth
+museum is.
 
 Scoring puts interest ahead of reputation on purpose. A four-star museum the
 traveller has no appetite for should lose to a three-star one they actually want
@@ -85,6 +101,14 @@ npm run demo --workspace @atp/server   # print a planned trip to the terminal
 
 ```
 packages/core     the domain model and the planning engine — pure TypeScript, no I/O
+  types.ts        the domain: places, hours, weather, budget, itineraries
+  time.ts         opening hours and minute-of-day arithmetic
+  travel.ts       door-to-door estimates and the cached travel matrix
+  scoring.ts      how much a traveller wants a place
+  weather.ts      how well a place suits the conditions in its slot
+  schedule.ts     re-timing, insertion search, and the shared plan state
+  meals.ts        meal windows, restaurant scoring, and making room to eat
+  planner.ts      the four passes, and the notes that explain them
 packages/server   HTTP API, the destination dataset, and the forecast provider
 apps/web          React + Leaflet map interface
 ```
@@ -112,7 +136,11 @@ curl -s localhost:8787/api/plan -H 'content-type: application/json' -d '{
   "preferences": {
     "interests": { "architecture": 1, "art-nouveau": 0.9, "views": 0.7 },
     "pace": "balanced",
-    "travelers": 2
+    "travelers": 2,
+    "dayEnd": "22:00",
+    "meals": ["lunch", "dinner"],
+    "cuisines": ["catalan", "tapas"],
+    "dietary": ["vegetarian"]
   }
 }'
 ```

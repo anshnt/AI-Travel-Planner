@@ -1,65 +1,51 @@
+import { DEFAULT_FOOD_SHARE, DEFAULT_MEAL_WINDOWS, isEatery, scheduleMeals } from './meals.js';
 import {
-  round2,
-  formatList,
-  isExcluded,
-  explainScore,
-  paceProfile,
-  scorePlace,
-  type PaceProfile,
-  type ScoreOptions,
-} from './scoring.js';
+  bestInsertion,
+  buildAnchor,
+  CITY_CENTRE_ID,
+  commitInsertion,
+  countStops,
+  dayCost,
+  newPlanState,
+  partyCost,
+  returnLeg,
+  travelMinutes,
+  TRAVEL_PENALTY_PER_HOUR,
+  type InsertionCandidate,
+  type InsertionSpec,
+  type PlanContext,
+  type PlannerOptions,
+  type PlanState,
+  type TimedItem,
+  type WorkingDay,
+} from './schedule.js';
+import { explainScore, formatList, isExcluded, paceProfile, round2, scorePlace } from './scoring.js';
 import {
   closingTimeAt,
   dateRange,
   describeHours,
-  earliestFeasibleStart,
   formatClock,
   formatDuration,
   isClosedAllDay,
   weekdayOf,
 } from './time.js';
 import { TravelMatrix } from './travel.js';
-import {
-  dayWeatherSeverity,
-  describeWetSpell,
-  rainRiskBetween,
-  weatherFit,
-  wetSpells,
-} from './weather.js';
+import { dayWeatherSeverity, describeWetSpell, rainRiskBetween, weatherFit, wetSpells } from './weather.js';
 import type {
-  DailyWeather,
   DayPlan,
   DayTotals,
   Itinerary,
-  MinuteOfDay,
+  MealKind,
   Place,
   PlanRequest,
   Preferences,
   Rejection,
-  RejectionReason,
   ScheduledItem,
   TimeWindow,
   TravelLeg,
 } from './types.js';
 
-/**
- * Turning an hour of walking into "score" so the two can be traded off.
- *
- * At 0.22 per hour, the planner will happily add a 20-minute hop for a place the
- * traveller loves, but not for one they are lukewarm about -- which is the
- * behaviour that keeps days geographically coherent without becoming rigid.
- */
-const TRAVEL_PENALTY_PER_HOUR = 0.22;
-
-/**
- * How much the forecast is allowed to move the plan.
- *
- * At 0.4 a soaking-wet slot can outweigh a moderate preference match -- enough
- * to reliably swap a park for a gallery in the wet hours -- but never enough to
- * override a strong one. Someone who came to Barcelona for Gaudi still gets
- * Gaudi in the rain; they just get the indoor half of it first.
- */
-const WEATHER_WEIGHT = 0.4;
+export { countStops, dayCost, partyCost, type PlannerOptions } from './schedule.js';
 
 /** Days may run this much over their notional share of the budget before insertions are refused. */
 const DAILY_BUDGET_SLACK = 1.4;
@@ -72,9 +58,6 @@ const DAILY_BUDGET_SLACK = 1.4;
  */
 const EXPENSIVE_SHARE_OF_DAILY_BUDGET = 0.45;
 
-/** Synthetic id for the day's anchor when the trip has no lodging. */
-const CITY_CENTRE_ID = '__origin__';
-
 /** Idle time below this is just slack in the plan; above it, it needs explaining. */
 const WAIT_WORTH_MENTIONING_MINUTES = 30;
 
@@ -84,14 +67,10 @@ const CLOSING_PRESSURE_MINUTES = 30;
 /** Above this much travel, a day is worth flagging as a moving-about day. */
 const HEAVY_TRAVEL_MINUTES = 90;
 
-const MINUTES_IN_DAY = 1440;
+/** A stop the traveller is this indifferent to is not worth the walk to reach it. */
+const WORTH_THE_WALK = 0.05;
 
-export type PlannerOptions = {
-  /** Skip the geographic-coherence penalty; used by tests that assert pure ranking. */
-  ignoreTravelPenalty?: boolean;
-  /** Plan weather-blind even when a forecast is supplied. */
-  ignoreWeather?: boolean;
-};
+const MINUTES_IN_DAY = 1440;
 
 export const DEFAULT_PREFERENCES: Preferences = {
   interests: {},
@@ -105,267 +84,59 @@ export const DEFAULT_PREFERENCES: Preferences = {
   cuisines: [],
   mustSeeIds: [],
   travelers: 2,
+  meals: ['lunch', 'dinner'],
+  mealWindows: DEFAULT_MEAL_WINDOWS,
 };
 
-export function normalizePreferences(partial?: Partial<Preferences>): Preferences {
-  const merged: Preferences = { ...DEFAULT_PREFERENCES, ...partial };
+/**
+ * What a caller may supply. Everything is optional, and meal windows may be
+ * given one at a time -- an API client that only wants a later dinner should not
+ * have to restate breakfast and lunch.
+ */
+export type PreferencesInput = Omit<Partial<Preferences>, 'mealWindows'> & {
+  mealWindows?: Partial<Record<MealKind, TimeWindow>>;
+};
+
+export function normalizePreferences(partial?: PreferencesInput): Preferences {
+  const merged: Preferences = {
+    ...DEFAULT_PREFERENCES,
+    ...partial,
+    mealWindows: { ...DEFAULT_MEAL_WINDOWS, ...partial?.mealWindows },
+  };
+
   const interests: Record<string, number> = {};
   for (const [tag, weight] of Object.entries(merged.interests ?? {})) {
     if (typeof weight === 'number' && Number.isFinite(weight)) {
       interests[tag.toLowerCase()] = Math.min(1, Math.max(-1, weight));
     }
   }
+
   return {
     ...merged,
     interests,
     travelers: Math.max(1, Math.round(merged.travelers)),
     dayStart: Math.max(0, Math.min(merged.dayStart, merged.dayEnd - 60)),
-    dayEnd: Math.min(24 * 60, Math.max(merged.dayEnd, merged.dayStart + 60)),
+    dayEnd: Math.min(MINUTES_IN_DAY, Math.max(merged.dayEnd, merged.dayStart + 60)),
     maxWalkMinutes: Math.max(5, merged.maxWalkMinutes),
     preferredModes: merged.preferredModes.length > 0 ? merged.preferredModes : ['walk', 'transit'],
+    meals: merged.meals ?? [],
   };
-}
-
-/** Cost of visiting a place for the whole party. */
-export function partyCost(place: Place, travelers: number): number {
-  return round2(Math.max(0, place.costPerPerson) * Math.max(1, travelers));
-}
-
-type TimedItem = {
-  place: Place;
-  start: MinuteOfDay;
-  end: MinuteOfDay;
-  arrival: TravelLeg;
-  locked: boolean;
-  reasons: string[];
-};
-
-type WorkingDay = {
-  date: string;
-  index: number;
-  bounds: TimeWindow;
-  items: TimedItem[];
-};
-
-type PlanContext = {
-  request: PlanRequest;
-  preferences: Preferences;
-  matrix: TravelMatrix;
-  pace: PaceProfile;
-  /** Where every day begins and ends. */
-  anchor: Place;
-  budgetTotal: number;
-  dailyBudget: number;
-  /** Trip-specific price scale handed to every scoring call. */
-  scoring: ScoreOptions;
-  /** Forecast by ISO date; days with no entry are planned weather-blind. */
-  weatherByDate: Map<string, DailyWeather>;
-  options: PlannerOptions;
-};
-
-/**
- * The day's anchor: the lodging when one is given, otherwise a zero-cost
- * stand-in at the centre of the destination. Having an anchor at all is what
- * lets the planner reason about the first and last legs of a day instead of
- * pretending the traveller materialises at their first stop.
- */
-function buildAnchor(request: PlanRequest): Place {
-  if (request.lodging) return request.lodging;
-  return {
-    id: CITY_CENTRE_ID,
-    name: `${request.destination.name} centre`,
-    category: 'lodging',
-    coord: request.destination.center,
-    dwellMinutes: 0,
-    costPerPerson: 0,
-    rating: 0,
-    tags: [],
-    openingHours: { alwaysOpen: true },
-    indoor: false,
-  };
-}
-
-/**
- * Re-times a whole day from its anchor.
- *
- * Every insertion and every reorder runs through here, which is deliberate: the
- * schedule is always recomputed from first principles rather than patched, so a
- * change early in the day correctly ripples into every later arrival time.
- * Returns `null` when the sequence cannot be made to fit.
- */
-function retime(sequence: readonly TimedItem[], day: WorkingDay, context: PlanContext): TimedItem[] | null {
-  const { matrix, pace, anchor } = context;
-  const timed: TimedItem[] = [];
-  let cursor = day.bounds.start;
-  let previousId = anchor.id;
-
-  for (const entry of sequence) {
-    const leg = matrix.leg(previousId, entry.place.id);
-    const arriveAt = cursor + leg.minutes;
-    const start = earliestFeasibleStart(
-      entry.place.openingHours,
-      day.date,
-      arriveAt,
-      entry.place.dwellMinutes,
-      day.bounds.end,
-    );
-    if (start === null) return null;
-
-    const end = start + entry.place.dwellMinutes;
-    timed.push({ ...entry, start, end, arrival: leg });
-    cursor = end + pace.bufferMinutes;
-    previousId = entry.place.id;
-  }
-
-  const activeMinutes = timed.reduce((sum, entry) => sum + (entry.end - entry.start), 0);
-  if (activeMinutes > pace.maxActiveMinutes) return null;
-
-  return timed;
-}
-
-/**
- * The journey home from the last stop of the day.
- *
- * Counted during planning, not just in the final totals: getting back costs both
- * time and money, and a planner that ignores it will quietly overspend its
- * budget and happily end the day on the far side of the city.
- */
-function returnLeg(items: readonly TimedItem[], context: PlanContext): TravelLeg | null {
-  const last = items[items.length - 1];
-  return last ? context.matrix.leg(last.place.id, context.anchor.id) : null;
-}
-
-function dayCost(items: readonly TimedItem[], context: PlanContext): number {
-  const travelers = context.preferences.travelers;
-  const visits = items.reduce((sum, entry) => sum + partyCost(entry.place, travelers), 0);
-  const travel = items.reduce((sum, entry) => sum + entry.arrival.cost, 0);
-  return round2(visits + travel + (returnLeg(items, context)?.cost ?? 0));
-}
-
-/**
- * How well a whole day's sequence suits that day's forecast.
- *
- * Scored over the sequence rather than per place, because weather fit depends on
- * *when* a stop happens: moving the gallery earlier changes the park's slot too.
- * Insertions are judged on the change in this figure, exactly as they are on the
- * change in travel time.
- */
-function dayWeatherScore(items: readonly TimedItem[], day: WorkingDay, context: PlanContext): number {
-  const weather = context.weatherByDate.get(day.date);
-  if (!weather) return 0;
-  return items.reduce((sum, entry) => sum + weatherFit(entry.place, weather, entry.start, entry.end).fit, 0);
-}
-
-function travelMinutes(items: readonly TimedItem[], context: PlanContext): number {
-  return (
-    items.reduce((sum, entry) => sum + entry.arrival.minutes, 0) +
-    (returnLeg(items, context)?.minutes ?? 0)
-  );
-}
-
-type InsertionCandidate = {
-  place: Place;
-  dayIndex: number;
-  position: number;
-  timed: TimedItem[];
-  /** Score gained minus the travel it costs. Higher is better. */
-  gain: number;
-  addedTravelMinutes: number;
-  addedCost: number;
-};
-
-/**
- * Best way to fit one place into one day, or `null` if it does not fit anywhere
- * in that day. Every position is tried because the right answer is often "third
- * stop, not last" -- a place that closes at 14:00 has to come early, and only a
- * full positional search finds that.
- */
-function bestInsertionForDay(
-  place: Place,
-  day: WorkingDay,
-  context: PlanContext,
-  remainingBudget: number,
-  spentToday: number,
-): InsertionCandidate | null {
-  if (day.items.length >= context.pace.maxStopsPerDay) return null;
-  if (isClosedAllDay(place.openingHours, day.date)) return null;
-
-  const visitCost = partyCost(place, context.preferences.travelers);
-  const baseTravel = travelMinutes(day.items, context);
-  const baseCost = dayCost(day.items, context);
-  const baseWeather = dayWeatherScore(day.items, day, context);
-  const score = scorePlace(place, context.preferences, context.scoring).total;
-
-  let best: InsertionCandidate | null = null;
-
-  for (let position = 0; position <= day.items.length; position += 1) {
-    const draft: TimedItem[] = [
-      ...day.items.slice(0, position),
-      {
-        place,
-        start: 0,
-        end: 0,
-        arrival: { fromPlaceId: '', toPlaceId: place.id, mode: 'walk', minutes: 0, meters: 0, cost: 0 },
-        locked: false,
-        reasons: [],
-      },
-      ...day.items.slice(position),
-    ];
-
-    const timed = retime(draft, day, context);
-    if (!timed) continue;
-
-    const addedTravelMinutes = travelMinutes(timed, context) - baseTravel;
-    const addedCost = round2(dayCost(timed, context) - baseCost);
-
-    if (addedCost > remainingBudget) continue;
-    if (spentToday + addedCost > context.dailyBudget && visitCost > 0) continue;
-
-    const penalty = context.options.ignoreTravelPenalty
-      ? 0
-      : (addedTravelMinutes / 60) * TRAVEL_PENALTY_PER_HOUR;
-    const weatherDelta = context.options.ignoreWeather
-      ? 0
-      : (dayWeatherScore(timed, day, context) - baseWeather) * WEATHER_WEIGHT;
-    const gain = score - penalty + weatherDelta;
-
-    // Positions are tried in order, so an exact tie resolves to the later slot.
-    // That keeps places in the order the planner chose them -- the most wanted
-    // stop stays first -- instead of newcomers jumping the queue for free.
-    const clearlyBetter = !best || gain > best.gain + 1e-9;
-    const tiedWithAnEarlierSlot = best !== null && Math.abs(gain - best.gain) <= 1e-9;
-    if (clearlyBetter || tiedWithAnEarlierSlot) {
-      best = { place, dayIndex: day.index, position, timed, gain, addedTravelMinutes, addedCost };
-    }
-  }
-
-  return best;
-}
-
-function bestInsertion(
-  place: Place,
-  days: readonly WorkingDay[],
-  context: PlanContext,
-  remainingBudget: number,
-  spentByDay: readonly number[],
-): InsertionCandidate | null {
-  let best: InsertionCandidate | null = null;
-  for (const day of days) {
-    const candidate = bestInsertionForDay(place, day, context, remainingBudget, spentByDay[day.index] ?? 0);
-    if (!candidate) continue;
-    if (!best || candidate.gain > best.gain + 1e-9) best = candidate;
-  }
-  return best;
 }
 
 /**
  * Builds a day-by-day itinerary from a pool of candidate places.
  *
- * The strategy is repeated best-insertion: on every pass the planner looks at
- * every unplaced candidate in every position of every day, and commits the one
- * whose appeal best justifies the detour it adds. That is slower than filling
- * days front-to-back, but it is what produces days that hang together
- * geographically instead of criss-crossing the city.
+ * Four passes, in this order:
+ *
+ *  1. must-sees, before the pool competes for the same slots;
+ *  2. repeated best-insertion over everything else -- every candidate is tried
+ *     in every position of every day, and the one whose appeal best justifies
+ *     the detour it adds is committed;
+ *  3. meals, once there is a route for a restaurant to sit on;
+ *  4. anything a meal displaced, given another chance elsewhere.
+ *
+ * Pass 2 is slower than filling days front-to-back, but it is what produces days
+ * that hang together geographically instead of criss-crossing the city.
  */
 export function planTrip(request: PlanRequest, options: PlannerOptions = {}): Itinerary {
   const preferences = normalizePreferences(request.preferences);
@@ -373,10 +144,18 @@ export function planTrip(request: PlanRequest, options: PlannerOptions = {}): It
   const anchor = buildAnchor(request);
 
   const pool = dedupeById(request.candidates).filter((place) => place.category !== 'lodging');
+  const eateries = pool.filter(isEatery);
+  const sights = pool.filter((place) => !isEatery(place));
   const matrix = new TravelMatrix([...pool, anchor], preferences);
 
   const budgetTotal = Math.max(0, request.budget.total);
   const dailyBudget = request.budget.dailyCap ?? (budgetTotal / dates.length) * DAILY_BUDGET_SLACK;
+
+  // Reserve food money only when meals are actually on the table. Holding back a
+  // third of the budget for meals nobody asked for would just shrink the trip.
+  const planningMeals = !options.skipMeals && preferences.meals.length > 0 && eateries.length > 0;
+  const foodShare = planningMeals ? clamp01(request.budget.foodShare ?? DEFAULT_FOOD_SHARE) : 0;
+  const foodReserve = round2(budgetTotal * foodShare);
 
   const context: PlanContext = {
     request,
@@ -386,6 +165,8 @@ export function planTrip(request: PlanRequest, options: PlannerOptions = {}): It
     anchor,
     budgetTotal,
     dailyBudget,
+    dayCount: dates.length,
+    foodReserve,
     scoring: {
       expensivePerPerson: Math.max(
         1,
@@ -403,49 +184,31 @@ export function planTrip(request: PlanRequest, options: PlannerOptions = {}): It
     items: [],
   }));
 
+  const state = newPlanState(days.length);
   const rejected = new Map<string, Rejection>();
-  const eligible: Place[] = [];
-  for (const place of pool) {
-    if (isExcluded(place, preferences)) {
-      rejected.set(place.id, {
-        placeId: place.id,
-        name: place.name,
-        reason: preferences.avoidCategories.includes(place.category) ? 'avoided-category' : 'disliked',
-        detail: preferences.avoidCategories.includes(place.category)
-          ? `you asked to skip ${place.category} stops`
-          : 'scores against your stated tastes',
-      });
-      continue;
-    }
-    // Restaurants are scheduled by the meal planner, not as sightseeing stops.
-    if (place.category === 'restaurant' || place.category === 'cafe') continue;
-    eligible.push(place);
-  }
+  const eligible = partitionEligible(sights, preferences, rejected);
 
-  const spentByDay = new Array<number>(days.length).fill(0);
-  let spent = 0;
-  const placed = new Set<string>();
+  // Sightseeing spends only what is not held back for food.
+  const activityBudget = round2(budgetTotal - foodReserve);
 
-  const commit = (candidate: InsertionCandidate): void => {
-    const day = days[candidate.dayIndex]!;
-    day.items = candidate.timed;
-    spentByDay[candidate.dayIndex] = round2((spentByDay[candidate.dayIndex] ?? 0) + candidate.addedCost);
-    spent = round2(spent + candidate.addedCost);
-    placed.add(candidate.place.id);
-  };
-
-  // Pass 1: must-sees get in first, before the pool competes for the same slots.
+  // --- Pass 1: must-sees, before the pool competes for the same slots ---
   const mustSees = eligible
     .filter((place) => preferences.mustSeeIds.includes(place.id))
     .sort(
       (a, b) =>
-        scorePlace(b, preferences, context.scoring).total - scorePlace(a, preferences, context.scoring).total ||
-        a.id.localeCompare(b.id),
+        scorePlace(b, preferences, context.scoring).total -
+          scorePlace(a, preferences, context.scoring).total || a.id.localeCompare(b.id),
     );
 
   for (const place of mustSees) {
-    const candidate = bestInsertion(place, days, context, context.budgetTotal - spent, spentByDay);
-    if (candidate) commit(candidate);
+    const candidate = bestInsertion(
+      sightSpec(place, context),
+      days,
+      context,
+      activityBudget - state.spent,
+      state.spentByDay,
+    );
+    if (candidate) commitInsertion(candidate, days, state);
     else
       rejected.set(place.id, {
         placeId: place.id,
@@ -455,36 +218,107 @@ export function planTrip(request: PlanRequest, options: PlannerOptions = {}): It
       });
   }
 
-  // Pass 2: repeated best-insertion across everything that is left.
-  const remaining = eligible.filter((place) => !placed.has(place.id) && !rejected.has(place.id));
+  // --- Pass 2: repeated best-insertion over the rest ---
+  const remaining = eligible.filter((place) => !state.placed.has(place.id) && !rejected.has(place.id));
+  fillGreedily(remaining, days, context, state, () => activityBudget - state.spent);
+
+  // --- Pass 3: meals, now that there is a route for a restaurant to sit on ---
+  const mealOutcome = planningMeals
+    ? scheduleMeals(eateries, days, context, state)
+    : { notesByDay: new Map<number, string[]>(), displaced: [] as TimedItem[] };
+
+  // --- Pass 4: rehome anything a meal displaced ---
+  if (mealOutcome.displaced.length > 0) {
+    fillGreedily(
+      mealOutcome.displaced.map((entry) => entry.place),
+      days,
+      context,
+      state,
+      () => budgetTotal - state.spent,
+    );
+  }
+
+  for (const place of eligible) {
+    if (state.placed.has(place.id) || rejected.has(place.id)) continue;
+    rejected.set(place.id, describeRejection(place, dates, context, days));
+  }
+
+  return finalize(request, context, days, [...rejected.values()], mealOutcome.notesByDay);
+}
+
+function sightSpec(place: Place, context: PlanContext): InsertionSpec {
+  return {
+    place,
+    kind: 'activity',
+    baseScore: scorePlace(place, context.preferences, context.scoring).total,
+    countsAsStop: true,
+  };
+}
+
+/**
+ * Repeated best-insertion: on each round, every remaining candidate is tried in
+ * every position of every day, and the single best is committed. Stops when
+ * nothing left is worth the travel it would add.
+ */
+function fillGreedily(
+  candidates: readonly Place[],
+  days: WorkingDay[],
+  context: PlanContext,
+  state: PlanState,
+  remainingBudget: () => number,
+): void {
   let progress = true;
   while (progress) {
     progress = false;
     let best: InsertionCandidate | null = null;
 
-    for (const place of remaining) {
-      if (placed.has(place.id)) continue;
-      const candidate = bestInsertion(place, days, context, context.budgetTotal - spent, spentByDay);
+    for (const place of candidates) {
+      if (state.placed.has(place.id)) continue;
+      const candidate = bestInsertion(
+        sightSpec(place, context),
+        days,
+        context,
+        remainingBudget(),
+        state.spentByDay,
+      );
       if (!candidate) continue;
+
       // Ties break on id so the same request always yields the same itinerary.
-      if (!best || candidate.gain > best.gain + 1e-9 || (Math.abs(candidate.gain - best.gain) <= 1e-9 && candidate.place.id < best.place.id)) {
-        best = candidate;
-      }
+      const better = !best || candidate.gain > best.gain + 1e-9;
+      const tiedButEarlierAlphabetically =
+        best !== null &&
+        Math.abs(candidate.gain - best.gain) <= 1e-9 &&
+        candidate.spec.place.id < best.spec.place.id;
+      if (better || tiedButEarlierAlphabetically) best = candidate;
     }
 
-    // A stop the traveller is indifferent to is not worth the walk to reach it.
-    if (best && best.gain > 0.05) {
-      commit(best);
+    if (best && best.gain > WORTH_THE_WALK) {
+      commitInsertion(best, days, state);
       progress = true;
     }
   }
+}
 
-  for (const place of remaining) {
-    if (placed.has(place.id) || rejected.has(place.id)) continue;
-    rejected.set(place.id, describeRejection(place, dates, context, days));
+function partitionEligible(
+  sights: readonly Place[],
+  preferences: Preferences,
+  rejected: Map<string, Rejection>,
+): Place[] {
+  const eligible: Place[] = [];
+  for (const place of sights) {
+    if (!isExcluded(place, preferences)) {
+      eligible.push(place);
+      continue;
+    }
+    const avoided = preferences.avoidCategories.includes(place.category);
+    rejected.set(place.id, {
+      placeId: place.id,
+      name: place.name,
+      reason: avoided ? 'avoided-category' : 'disliked',
+      detail: avoided ? `you asked to skip ${place.category} stops` : 'scores against your stated tastes',
+    });
   }
-
-  return finalize(request, context, days, [...rejected.values()]);
+  return eligible;
 }
 
 function describeRejection(
@@ -499,7 +333,7 @@ function describeRejection(
   }
 
   const score = scorePlace(place, context.preferences, context.scoring).total;
-  if (score <= 0.05) {
+  if (score <= WORTH_THE_WALK) {
     return { ...base, reason: 'disliked', detail: 'nothing in your preferences pointed here' };
   }
 
@@ -508,7 +342,9 @@ function describeRejection(
   // to get there and back rather than just the ticket price.
   const moneyIsNoObject: PlanContext = { ...context, dailyBudget: Number.POSITIVE_INFINITY };
   const nothingSpentYet = days.map(() => 0);
-  if (bestInsertion(place, days, moneyIsNoObject, Number.POSITIVE_INFINITY, nothingSpentYet)) {
+  if (
+    bestInsertion(sightSpec(place, context), days, moneyIsNoObject, Number.POSITIVE_INFINITY, nothingSpentYet)
+  ) {
     return { ...base, reason: 'over-budget', detail: 'the budget ran out before this one' };
   }
 
@@ -521,62 +357,73 @@ function dedupeById(places: readonly Place[]): Place[] {
   return [...seen.values()];
 }
 
+const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
+
 function finalize(
   request: PlanRequest,
   context: PlanContext,
   days: readonly WorkingDay[],
   rejected: Rejection[],
+  mealNotesByDay: Map<number, string[]>,
 ): Itinerary {
-  const weatherByDate = new Map((request.weather ?? []).map((entry) => [entry.date, entry]));
   const travelers = context.preferences.travelers;
 
   const dayPlans: DayPlan[] = days.map((day) => {
-    const weather = weatherByDate.get(day.date);
+    const weather = context.weatherByDate.get(day.date);
     const items: ScheduledItem[] = day.items.map((entry) => ({
       placeId: entry.place.id,
       place: entry.place,
-      kind: 'activity',
+      kind: entry.kind,
+      ...(entry.mealKind ? { mealKind: entry.mealKind } : {}),
       start: entry.start,
       end: entry.end,
       cost: partyCost(entry.place, travelers),
       arrival: entry.arrival,
       reasons:
-        entry.reasons.length > 0 ? entry.reasons : explainScore(entry.place, context.preferences, context.scoring),
+        entry.reasons.length > 0
+          ? entry.reasons
+          : explainScore(entry.place, context.preferences, context.scoring),
       cautions: weatherFit(entry.place, weather, entry.start, entry.end).cautions,
       locked: entry.locked,
     }));
 
-    const last = day.items[day.items.length - 1];
-    const returnToBase = last ? context.matrix.leg(last.place.id, context.anchor.id) : undefined;
+    const home = returnLeg(day.items, context);
+    const totals = totalsFor(items, home ?? undefined);
 
-    const totals = totalsFor(items, returnToBase);
     return {
       date: day.date,
       weekday: weekdayOf(day.date),
       items,
-      weather: weatherByDate.get(day.date),
+      ...(weather ? { weather } : {}),
       totals,
-      notes: dayNotes(day, context),
-      returnToBase,
+      notes: [...dayNotes(day, context), ...(mealNotesByDay.get(day.index) ?? [])],
+      ...(home ? { returnToBase: home } : {}),
     };
   });
 
   const totals = dayPlans.reduce<DayTotals>(
     (acc, day) => ({
       cost: round2(acc.cost + day.totals.cost),
+      mealCost: round2(acc.mealCost + day.totals.mealCost),
       travelMinutes: acc.travelMinutes + day.totals.travelMinutes,
       walkMinutes: acc.walkMinutes + day.totals.walkMinutes,
       activeMinutes: acc.activeMinutes + day.totals.activeMinutes,
       distanceMeters: acc.distanceMeters + day.totals.distanceMeters,
     }),
-    { cost: 0, travelMinutes: 0, walkMinutes: 0, activeMinutes: 0, distanceMeters: 0 },
+    { cost: 0, mealCost: 0, travelMinutes: 0, walkMinutes: 0, activeMinutes: 0, distanceMeters: 0 },
   );
 
-  const placesVisited = dayPlans.reduce((sum, day) => sum + day.items.length, 0);
+  const placesVisited = dayPlans.reduce(
+    (sum, day) => sum + day.items.filter((item) => item.kind === 'activity').length,
+    0,
+  );
+  const mealsBooked = dayPlans.reduce(
+    (sum, day) => sum + day.items.filter((item) => item.kind === 'meal').length,
+    0,
+  );
+
   const score = round2(
-    dayPlans
-      .flatMap((day) => day.items)
-      .reduce((sum, item) => sum + scorePlace(item.place, context.preferences, context.scoring).total, 0) -
+    days.flatMap((day) => day.items).reduce((sum, entry) => sum + entry.baseScore, 0) -
       (totals.travelMinutes / 60) * TRAVEL_PENALTY_PER_HOUR,
   );
 
@@ -590,6 +437,7 @@ function finalize(
       ...totals,
       budgetRemaining: round2(context.budgetTotal - totals.cost),
       placesVisited,
+      mealsBooked,
     },
     score,
     rejected,
@@ -604,6 +452,7 @@ export function totalsFor(items: readonly ScheduledItem[], returnToBase?: Travel
     cost: round2(
       items.reduce((sum, item) => sum + item.cost, 0) + legs.reduce((sum, leg) => sum + leg.cost, 0),
     ),
+    mealCost: round2(items.filter((item) => item.kind === 'meal').reduce((sum, item) => sum + item.cost, 0)),
     travelMinutes: legs.reduce((sum, leg) => sum + leg.minutes, 0),
     walkMinutes: legs.filter((leg) => leg.mode === 'walk').reduce((sum, leg) => sum + leg.minutes, 0),
     activeMinutes: items.reduce((sum, item) => sum + (item.end - item.start), 0),
@@ -640,6 +489,10 @@ function dayNotes(day: WorkingDay, context: PlanContext): string[] {
     const wait = entry.start - readyAt;
     if (wait < WAIT_WORTH_MENTIONING_MINUTES) return;
 
+    // Waiting for a meal window is the plan working as intended, not a gap that
+    // needs apologising for.
+    if (entry.kind === 'meal') return;
+
     notes.push(
       index === 0
         ? `${entry.place.name} opens at ${formatClock(entry.start)} (${describeHours(entry.place.openingHours, day.date)}), so the day starts a little later.`
@@ -660,7 +513,9 @@ function dayNotes(day: WorkingDay, context: PlanContext): string[] {
 
   const totalTravel = travelMinutes(day.items, context);
   if (totalTravel > HEAVY_TRAVEL_MINUTES) {
-    notes.push(`${formatDuration(totalTravel)} of getting about today; a transit pass would probably pay for itself.`);
+    notes.push(
+      `${formatDuration(totalTravel)} of getting about today; a transit pass would probably pay for itself.`,
+    );
   }
 
   return notes;
@@ -701,7 +556,9 @@ function weatherNotes(day: WorkingDay, context: PlanContext): string[] {
 
   if (dayWeatherSeverity(weather) === 'poor' && spells.length === 0) {
     if (weather.tempMaxC > 34) {
-      notes.push(`Up to ${Math.round(weather.tempMaxC)}°C today; the indoor stops are deliberately in the afternoon.`);
+      notes.push(
+        `Up to ${Math.round(weather.tempMaxC)}°C today; the indoor stops are deliberately in the afternoon.`,
+      );
     } else if (weather.tempMinC < 1) {
       notes.push(`Down to ${Math.round(weather.tempMinC)}°C today; the outdoor stops are kept short.`);
     }

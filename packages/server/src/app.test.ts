@@ -228,6 +228,87 @@ describe('POST /api/plan', () => {
   });
 });
 
+describe('POST /api/plan: meals', () => {
+  it('books lunch and dinner by default', async () => {
+    const { json } = await call('POST', '/api/plan', basePlan);
+    const itinerary: Itinerary = json.itinerary;
+    expect(itinerary.totals.mealsBooked).toBeGreaterThan(0);
+    expect(itinerary.totals.mealCost).toBeGreaterThan(0);
+
+    const meals = itinerary.days.flatMap((day) => day.items.filter((item) => item.kind === 'meal'));
+    for (const meal of meals) {
+      expect(['breakfast', 'lunch', 'dinner']).toContain(meal.mealKind);
+      expect(meal.place.meal).toBeDefined();
+    }
+  });
+
+  it('books nothing when meals is an empty list', async () => {
+    const { json } = await call('POST', '/api/plan', {
+      ...basePlan,
+      preferences: { ...basePlan.preferences, meals: [] },
+    });
+    expect(json.itinerary.totals.mealsBooked).toBe(0);
+    expect(json.itinerary.totals.mealCost).toBe(0);
+  });
+
+  it('only books places that meet a dietary requirement', async () => {
+    const { json } = await call('POST', '/api/plan', {
+      ...basePlan,
+      preferences: { ...basePlan.preferences, meals: ['lunch', 'dinner'], dietary: ['vegan'] },
+    });
+    const meals = json.itinerary.days.flatMap((day: { items: any[] }) =>
+      day.items.filter((item) => item.kind === 'meal'),
+    );
+    for (const meal of meals) {
+      expect(meal.place.meal.dietary).toContain('vegan');
+    }
+  });
+
+  it('accepts a later dinner window without restating the others', async () => {
+    const { status, json } = await call('POST', '/api/plan', {
+      ...basePlan,
+      preferences: {
+        ...basePlan.preferences,
+        meals: ['dinner'],
+        mealWindows: { dinner: { start: '21:00', end: '22:30' } },
+        dayEnd: '23:30',
+      },
+    });
+    expect(status).toBe(200);
+    const dinners = json.itinerary.days.flatMap((day: { items: any[] }) =>
+      day.items.filter((item) => item.mealKind === 'dinner'),
+    );
+    expect(dinners.length).toBeGreaterThan(0);
+    for (const dinner of dinners) expect(dinner.start).toBeGreaterThanOrEqual(21 * 60);
+  });
+
+  it('rejects a backwards meal window', async () => {
+    const { status } = await call('POST', '/api/plan', {
+      ...basePlan,
+      preferences: { ...basePlan.preferences, mealWindows: { lunch: { start: '14:00', end: '12:00' } } },
+    });
+    expect(status).toBe(400);
+  });
+
+  it('honours an explicit food share and still respects the total', async () => {
+    const { json } = await call('POST', '/api/plan', { ...basePlan, budgetTotal: 400, foodShare: 0.6 });
+    expect(json.itinerary.totals.cost).toBeLessThanOrEqual(400);
+    expect(json.itinerary.totals.mealsBooked).toBeGreaterThan(0);
+  });
+
+  it('rejects a food share outside 0 to 1', async () => {
+    expect((await call('POST', '/api/plan', { ...basePlan, foodShare: 1.5 })).status).toBe(400);
+  });
+
+  it('keeps day totals adding up with meals in the plan', async () => {
+    const { json } = await call('POST', '/api/plan', basePlan);
+    const itinerary: Itinerary = json.itinerary;
+    const summedFood = itinerary.days.reduce((sum, day) => sum + day.totals.mealCost, 0);
+    expect(itinerary.totals.mealCost).toBeCloseTo(summedFood, 2);
+    expect(itinerary.totals.mealCost).toBeLessThanOrEqual(itinerary.totals.cost);
+  });
+});
+
 describe('unknown routes', () => {
   it('404s with JSON rather than HTML', async () => {
     const { status, json } = await call('GET', '/api/nope');

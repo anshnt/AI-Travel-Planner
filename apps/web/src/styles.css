@@ -583,6 +583,7 @@ button:focus-visible {
 
 .atp-pin > span {
   transform: rotate(45deg);
+  line-height: 1;
 }
 
 .atp-pin--selected {
@@ -735,4 +736,23 @@ button:focus-visible {
   font-size: 11.5px;
   line-height: 1.45;
   color: var(--danger);
+}
+
+/* ---------- meals ---------- */
+
+.atp-stop--meal .atp-stop__index {
+  /* Meals carry a glyph, not a number, so they need no category colour. */
+  background: transparent;
+  font-size: 14px;
+}
+
+.atp-stop--meal .atp-stop__name {
+  font-weight: 550;
+}
+
+.atp-day__split {
+  margin-left: 4px;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--text-dim);
 }

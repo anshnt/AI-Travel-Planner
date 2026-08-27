@@ -4,4 +4,6 @@ export * from './geo.js';
 export * from './travel.js';
 export * from './scoring.js';
 export * from './weather.js';
+export * from './schedule.js';
+export * from './meals.js';
 export * from './planner.js';

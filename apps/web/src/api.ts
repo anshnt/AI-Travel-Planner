@@ -1,4 +1,14 @@
-import type { Coord, DailyWeather, Itinerary, Pace, Place, PlaceCategory, TravelMode } from '@atp/core';
+import type {
+  Coord,
+  DailyWeather,
+  DietaryTag,
+  Itinerary,
+  MealKind,
+  Pace,
+  Place,
+  PlaceCategory,
+  TravelMode,
+} from '@atp/core';
 
 export type DestinationSummary = {
   id: string;
@@ -28,6 +38,9 @@ export type PlanFormState = {
   avoidCategories: PlaceCategory[];
   mustSeeIds: string[];
   lodgingPlaceId?: string;
+  meals: MealKind[];
+  dietary: DietaryTag[];
+  cuisines: string[];
 };
 
 export class ApiError extends Error {
@@ -115,6 +128,9 @@ export async function requestPlan(
         avoidCategories: form.avoidCategories,
         mustSeeIds: form.mustSeeIds,
         travelers: form.travelers,
+        meals: form.meals,
+        dietary: form.dietary,
+        cuisines: form.cuisines,
       },
     }),
   });
