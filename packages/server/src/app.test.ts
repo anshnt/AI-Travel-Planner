@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createApp } from './app.js';
 import { DESTINATIONS } from './data/destinations.js';
+import { SyntheticWeatherProvider } from './providers/weather.js';
 
 let app: Express;
 
@@ -46,7 +47,10 @@ const basePlan = {
 };
 
 beforeAll(() => {
-  app = createApp();
+  // The climate model explicitly: these tests assert on exact plans, so the
+  // weather has to be the same every run -- and a unit test that reaches for a
+  // live forecast is a unit test that fails on a train.
+  app = createApp({ weather: new SyntheticWeatherProvider() });
 });
 
 describe('GET /api/health', () => {

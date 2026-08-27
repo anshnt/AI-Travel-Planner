@@ -14,7 +14,8 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import { ZodError } from 'zod';
 
 import { DESTINATIONS, destinationSummaries, findDestination } from './data/destinations.js';
-import { SyntheticWeatherProvider, type WeatherProvider } from './providers/weather.js';
+import { weatherProviderFromEnv } from './config.js';
+import { type WeatherProvider } from './providers/weather.js';
 import {
   defaultPreferencesInput,
   formatIssues,
@@ -28,7 +29,7 @@ export type AppDependencies = {
 };
 
 export function defaultDependencies(): AppDependencies {
-  return { weather: new SyntheticWeatherProvider() };
+  return { weather: weatherProviderFromEnv() };
 }
 
 export function createApp(dependencies: AppDependencies = defaultDependencies()): Express {

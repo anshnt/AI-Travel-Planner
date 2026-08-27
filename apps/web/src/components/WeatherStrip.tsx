@@ -42,6 +42,14 @@ export function WeatherStrip({ weather, fromHour, toHour }: Props) {
         <span className="atp-weather__temps">
           {Math.round(weather.tempMinC)}&deg; to {Math.round(weather.tempMaxC)}&deg;
           {weather.windKph >= 38 ? ` · ${Math.round(weather.windKph)} km/h wind` : ''}
+          {weather.source === 'climate-model' ? (
+            <span
+              className="atp-weather__source"
+              title="Beyond the forecast window. Modelled from the season and the latitude, so treat it as a typical day rather than a prediction."
+            >
+              estimate
+            </span>
+          ) : null}
         </span>
       </div>
 

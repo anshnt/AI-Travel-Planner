@@ -115,6 +115,8 @@ const dailyWeatherSchema = z.object({
       }),
     )
     .optional(),
+  /** Honest labelling is allowed through: a caller may say this is an estimate. */
+  source: z.enum(['forecast', 'climate-model']).optional(),
 });
 
 const disruptionSchema = z.discriminatedUnion('kind', [

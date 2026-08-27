@@ -140,6 +140,15 @@ export type HourlyWeather = {
   precipitationMm: number;
 };
 
+/**
+ * Where a day's weather came from.
+ *
+ * A real forecast and a seasonal estimate are very different things to plan
+ * against, and a traveller booking three months out deserves to know which one
+ * they are looking at.
+ */
+export type WeatherSource = 'forecast' | 'climate-model';
+
 export type DailyWeather = {
   date: string;
   condition: WeatherCondition;
@@ -150,6 +159,7 @@ export type DailyWeather = {
   precipitationMm: number;
   windKph: number;
   hourly?: HourlyWeather[];
+  source?: WeatherSource;
 };
 
 export type Budget = {

@@ -289,6 +289,15 @@ export type InsertionSpec = {
    * a detour that drags the whole day across the city and back.
    */
   maxAddedTravelMinutes?: number;
+  /**
+   * Marks the placed stop as one the automatic passes may not undo.
+   *
+   * Set when the traveller asked for this stop by name. Everything downstream --
+   * meal displacement, the optimiser -- checks `locked` before touching a stop,
+   * and an instruction that a restaurant can quietly overturn is not an
+   * instruction.
+   */
+  locked?: boolean;
 };
 
 export type InsertionCandidate = {
@@ -310,7 +319,7 @@ export function draftItem(spec: InsertionSpec): TimedItem {
     start: 0,
     end: 0,
     arrival: { fromPlaceId: '', toPlaceId: spec.place.id, mode: 'walk', minutes: 0, meters: 0, cost: 0 },
-    locked: false,
+    locked: spec.locked ?? false,
     reasons: spec.reasons ?? [],
     ...(spec.startWindow ? { startWindow: spec.startWindow } : {}),
     baseScore: spec.baseScore,
