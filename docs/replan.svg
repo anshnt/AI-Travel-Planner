@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 633" width="900" height="633" role="img" aria-labelledby="t d">
+  <title id="t">The same day before and after two hours are lost</title>
+  <desc id="d">running 2h late. 1 moved to another day and 4 retimed. Everything up to 11:00 on 2026-05-11 was left alone. Picking the plan back up at 13:00 on 2026-05-11.</desc>
+  <style>
+  :root {
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-3: #8a887f;
+    --grid: #e6e5e0;
+    --band: #eceae4;
+    --s1: #2a78d6;
+    --s2: #eb6834;
+    --s3: #1baf7a;
+    --ramp-1: #dbe8f8;
+    --ramp-2: #a9c8ee;
+    --ramp-3: #6ba1e0;
+    --ramp-4: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #8a887f;
+    --grid: #2e2e2b;
+    --band: #262623;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --ramp-1: #1e2a38;
+    --ramp-2: #26456b;
+    --ramp-3: #2c639f;
+    --ramp-4: #3987e5;
+    }
+  }
+  text { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; fill: var(--ink); }
+  .t-dim { fill: var(--ink-2); }
+  .t-faint { fill: var(--ink-3); }
+  .t-num { font-variant-numeric: tabular-nums; }
+  .rule { stroke: var(--grid); stroke-width: 1; }
+  </style>
+  <rect width="900" height="633" fill="var(--surface)"/>
+  <text x="24" y="30" font-size="16" font-weight="650">Absorbing two lost hours</text>
+  <text x="24" y="50" font-size="11.5" class="t-dim">2026-05-11: at 11:00 the traveller is 2h behind. What had already happened is left alone.</text>
+  <text x="24" y="92" font-size="12" font-weight="600">Planned</text>
+  <line x1="214" y1="100" x2="214" y2="282" class="rule"/>
+  <line x1="264.92" y1="100" x2="264.92" y2="282" class="rule"/>
+  <line x1="315.85" y1="100" x2="315.85" y2="282" class="rule"/>
+  <line x1="366.77" y1="100" x2="366.77" y2="282" class="rule"/>
+  <line x1="417.69" y1="100" x2="417.69" y2="282" class="rule"/>
+  <line x1="468.62" y1="100" x2="468.62" y2="282" class="rule"/>
+  <line x1="519.54" y1="100" x2="519.54" y2="282" class="rule"/>
+  <line x1="570.46" y1="100" x2="570.46" y2="282" class="rule"/>
+  <line x1="621.38" y1="100" x2="621.38" y2="282" class="rule"/>
+  <line x1="672.31" y1="100" x2="672.31" y2="282" class="rule"/>
+  <line x1="723.23" y1="100" x2="723.23" y2="282" class="rule"/>
+  <line x1="774.15" y1="100" x2="774.15" y2="282" class="rule"/>
+  <line x1="825.08" y1="100" x2="825.08" y2="282" class="rule"/>
+  <line x1="876" y1="100" x2="876" y2="282" class="rule"/>
+  <rect x="227.58" y="104" width="89.12" height="14" rx="4" fill="var(--ink-3)"/>
+  <text x="202" y="115" font-size="10.5" text-anchor="end" class="t-faint">Sagrada Família</text>
+  <rect x="342.16" y="130" width="63.65" height="14" rx="4" fill="var(--s1)"/>
+  <text x="202" y="141" font-size="10.5" text-anchor="end">Recinte Modernista de Sant Pau</text>
+  <rect x="440.61" y="156" width="42.44" height="14" rx="4" fill="var(--s2)"/>
+  <text x="202" y="167" font-size="10.5" text-anchor="end">Quimet &amp; Quimet</text>
+  <rect x="510.2" y="182" width="50.92" height="14" rx="4" fill="var(--s1)"/>
+  <text x="202" y="193" font-size="10.5" text-anchor="end">Mercat de la Boqueria</text>
+  <rect x="580.65" y="208" width="76.38" height="14" rx="4" fill="var(--s1)"/>
+  <text x="202" y="219" font-size="10.5" text-anchor="end">Gothic Quarter</text>
+  <rect x="676.55" y="234" width="38.19" height="14" rx="4" fill="var(--s1)"/>
+  <text x="202" y="245" font-size="10.5" text-anchor="end">Santa Maria del Mar</text>
+  <rect x="748.69" y="260" width="63.65" height="14" rx="4" fill="var(--s2)"/>
+  <text x="202" y="271" font-size="10.5" text-anchor="end">Bar del Pla</text>
+  <text x="24" y="304" font-size="12" font-weight="600">Re-planned</text>
+  <line x1="214" y1="312" x2="214" y2="468" class="rule"/>
+  <line x1="264.92" y1="312" x2="264.92" y2="468" class="rule"/>
+  <line x1="315.85" y1="312" x2="315.85" y2="468" class="rule"/>
+  <line x1="366.77" y1="312" x2="366.77" y2="468" class="rule"/>
+  <line x1="417.69" y1="312" x2="417.69" y2="468" class="rule"/>
+  <line x1="468.62" y1="312" x2="468.62" y2="468" class="rule"/>
+  <line x1="519.54" y1="312" x2="519.54" y2="468" class="rule"/>
+  <line x1="570.46" y1="312" x2="570.46" y2="468" class="rule"/>
+  <line x1="621.38" y1="312" x2="621.38" y2="468" class="rule"/>
+  <line x1="672.31" y1="312" x2="672.31" y2="468" class="rule"/>
+  <line x1="723.23" y1="312" x2="723.23" y2="468" class="rule"/>
+  <line x1="774.15" y1="312" x2="774.15" y2="468" class="rule"/>
+  <line x1="825.08" y1="312" x2="825.08" y2="468" class="rule"/>
+  <line x1="876" y1="312" x2="876" y2="468" class="rule"/>
+  <line x1="417.69" y1="308" x2="417.69" y2="472" stroke="var(--s2)" stroke-width="1.5"/>
+  <text x="422.69" y="306" font-size="9.5" style="fill:var(--s2)">back on the road 13:00</text>
+  <rect x="227.58" y="316" width="89.12" height="14" rx="4" fill="var(--ink-3)"/>
+  <text x="202" y="327" font-size="10.5" text-anchor="end" class="t-faint">Sagrada Família</text>
+  <rect x="436.36" y="342" width="42.44" height="14" rx="4" fill="var(--s2)"/>
+  <text x="202" y="353" font-size="10.5" text-anchor="end">Quimet &amp; Quimet</text>
+  <rect x="513.6" y="368" width="63.65" height="14" rx="4" fill="var(--s1)"/>
+  <text x="202" y="379" font-size="10.5" text-anchor="end">Recinte Modernista de Sant Pau</text>
+  <rect x="607.81" y="394" width="76.38" height="14" rx="4" fill="var(--s1)"/>
+  <text x="202" y="405" font-size="10.5" text-anchor="end">Gothic Quarter</text>
+  <rect x="703.71" y="420" width="38.19" height="14" rx="4" fill="var(--s1)"/>
+  <text x="202" y="431" font-size="10.5" text-anchor="end">Santa Maria del Mar</text>
+  <rect x="758.88" y="446" width="63.65" height="14" rx="4" fill="var(--s2)"/>
+  <text x="202" y="457" font-size="10.5" text-anchor="end">Bar del Pla</text>
+  <text x="24" y="488" font-size="11" font-weight="600" class="t-dim">What the agent changed, and why</text>
+  <text x="24" y="506" font-size="9" font-weight="700" style="fill:var(--s1)">MOVED</text>
+  <text x="92" y="506" font-size="10.5" font-weight="600">Mercat de la Boqueria</text>
+  <text x="320" y="506" font-size="10.5" class="t-dim">moved to 2026-05-13 at 18:35, where it fits</text>
+  <text x="24" y="523" font-size="9" font-weight="700" style="fill:var(--s1)">RETIMED</text>
+  <text x="92" y="523" font-size="10.5" font-weight="600">Bar del Pla</text>
+  <text x="320" y="523" font-size="10.5" class="t-dim">35m later, at 20:05</text>
+  <text x="24" y="540" font-size="9" font-weight="700" style="fill:var(--s1)">RETIMED</text>
+  <text x="92" y="540" font-size="10.5" font-weight="600">Gothic Quarter</text>
+  <text x="320" y="540" font-size="10.5" class="t-dim">32m later, at 16:44</text>
+  <text x="24" y="557" font-size="9" font-weight="700" style="fill:var(--s1)">RETIMED</text>
+  <text x="92" y="557" font-size="10.5" font-weight="600">Recinte Modernista de Sant Pau</text>
+  <text x="320" y="557" font-size="10.5" class="t-dim">3h 22m later, at 14:53</text>
+  <text x="24" y="574" font-size="9" font-weight="700" style="fill:var(--s1)">RETIMED</text>
+  <text x="92" y="574" font-size="10.5" font-weight="600">Santa Maria del Mar</text>
+  <text x="320" y="574" font-size="10.5" class="t-dim">32m later, at 18:37</text>
+  <rect x="24" y="612.18" width="9" height="9" rx="2" fill="var(--ink-3)"/>
+  <text x="38" y="619" font-size="11" class="t-dim">already happened</text>
+  <rect x="158.56" y="612.18" width="9" height="9" rx="2" fill="var(--s1)"/>
+  <text x="172.56" y="619" font-size="11" class="t-dim">still to come</text>
+  <rect x="274.64" y="612.18" width="9" height="9" rx="2" fill="var(--s2)"/>
+  <text x="288.64" y="619" font-size="11" class="t-dim">meal</text>
+</svg>

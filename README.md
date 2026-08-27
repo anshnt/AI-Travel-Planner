@@ -65,6 +65,51 @@ should you be doing at 14:00":
 
 Nothing about the day is fixed except the facts it has to work around.
 
+## The plan adjusts when reality does
+
+Planning a trip is the easy half. The interesting half is what happens when the
+traveller is ninety minutes behind, or a museum turns out to be shut, or they
+simply do not fancy something any more.
+
+![The same day before and after two hours are lost at 11:00. What had already happened stays exactly where it was; a marker shows the plan picking back up at 13:00. Mercat de la Boqueria moved to another day; Bar del Pla, Gothic Quarter, Recinte Modernista de Sant Pau and Santa Maria del Mar all shifted later, each with the shift stated.](docs/replan.svg)
+
+Re-planning **adjusts** the plan rather than rebuilding it, which turns out to be
+the whole design problem. An earlier version released every unpinned stop and
+re-ran the planner over empty days, nudging it towards the old plan to try to
+reproduce it. That does not work: greedy insertion is order-sensitive, so a bias
+meant to *stabilise* the plan perturbs it instead — and an undisrupted re-plan
+came back with a stop missing. Now only genuinely invalidated stops are released,
+so re-planning nothing is a no-op by construction rather than by luck.
+
+Two moments matter, and conflating them is a bug rather than a simplification:
+
+- **what already happened** is a fact, and its times are immovable;
+- **where the plan picks back up** is what lateness pushes forward.
+
+Everything between the two was *missed*, not done. Treating the skipped afternoon
+as history would silently keep stops the traveller never reached.
+
+| Disruption | What the agent does |
+| --- | --- |
+| `running-late` | Freezes what happened, resumes at now + the delay, re-times the rest, and sheds the least wanted stops if the day no longer holds them. Anything shed gets another day if one has room. |
+| `place-closed` | Folded into that place's opening hours as a date exception, so every part of the scheduler already understands it. Rehomed if another day can take it. |
+| `forecast-changed` | Reopens only the days whose weather actually moved, and re-derives their order. |
+| `budget-changed` | Sheds stops that are already in the plan, cheapest-value first. Free stops are never shed: dropping them costs a sight and saves nothing. |
+| `pin` / `unpin` | A pin is a promise: the stop keeps its exact time, and an arrangement that cannot get the traveller there is reported infeasible rather than rounded away. |
+| `move` | An instruction, not a suggestion. If the target day is full, its least wanted stop makes way. |
+| `drop` / `add` | The traveller's list wins. "Fit this in" will clear space for it. |
+
+And it says what it did:
+
+```
+a stop closed on 2026-09-17.
+1 moved to another day, 2 retimed and 1 added.
+
+MOVED    Mercat de Sant Antoni    moved to 2026-09-18 at 09:17, where it fits
+ADDED    Fundació Joan Miró       added on 2026-09-17 at 13:57 — there was room
+RETIMED  Casa Batlló              1h 5m later, at 18:32
+```
+
 ## What the planner reasons about
 
 | Concern | How it is handled |
@@ -147,6 +192,7 @@ packages/core     the domain model and the planning engine — pure TypeScript, 
   schedule.ts     re-timing, insertion search, and the shared plan state
   meals.ts        meal windows, restaurant scoring, and making room to eat
   planner.ts      the four passes, and the notes that explain them
+  replan.ts       disruptions, what is immovable, and the diff that explains it
 
 packages/server   HTTP API, the destination dataset, and the forecast provider
 apps/web          React + Leaflet map interface
@@ -164,7 +210,14 @@ GET  /api/destinations
 GET  /api/destinations/:id
 GET  /api/destinations/:id/forecast?startDate=&endDate=
 POST /api/plan
+POST /api/replan
 ```
+
+`/api/replan` takes the same body as `/api/plan` plus the stops the client is
+holding, the traveller's current moment, and a list of disruptions. The itinerary
+travels with the request rather than living in a server session, which keeps the
+server stateless and makes "undo" the client's business rather than a
+synchronisation problem.
 
 ```bash
 curl -s localhost:8787/api/plan -H 'content-type: application/json' -d '{
@@ -184,6 +237,22 @@ curl -s localhost:8787/api/plan -H 'content-type: application/json' -d '{
 }'
 ```
 
+```bash
+# ...then tell it you are ninety minutes behind
+curl -s localhost:8787/api/replan -H 'content-type: application/json' -d '{
+  "destinationId": "barcelona",
+  "startDate": "2026-05-11",
+  "endDate": "2026-05-14",
+  "budgetTotal": 900,
+  "scheduled": [
+    { "date": "2026-05-11", "placeId": "bcn-sagrada-familia", "start": 556 },
+    { "date": "2026-05-11", "placeId": "bcn-sant-pau", "start": 691 }
+  ],
+  "now": { "date": "2026-05-11", "minute": "11:00" },
+  "disruptions": [{ "kind": "running-late", "minutes": 90 }]
+}'
+```
+
 ## What it does not do yet
 
 Stated plainly, because a planner that overstates itself is worse than one that
@@ -192,9 +261,6 @@ does less:
 - **It reorders around the weather, but never delays for it.** If a shower is
   forecast for the next hour, the planner will move an indoor stop into it — but
   it will not hold an outdoor stop back forty minutes to let the rain pass.
-- **It plans; it does not yet re-plan.** There is no way to say "I'm running
-  ninety minutes late" or "this closed unexpectedly" and have the rest of the day
-  rearrange itself around what is already fixed.
 - **The route is greedy, not optimised.** Insertion produces coherent days, but
   no local search pass runs afterwards to shave off the remaining detours.
 - **The data is a seed set, not live.** See below.

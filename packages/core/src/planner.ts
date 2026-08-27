@@ -138,7 +138,26 @@ export function normalizePreferences(partial?: PreferencesInput): Preferences {
  * Pass 2 is slower than filling days front-to-back, but it is what produces days
  * that hang together geographically instead of criss-crossing the city.
  */
-export function planTrip(request: PlanRequest, options: PlannerOptions = {}): Itinerary {
+/**
+ * Everything the passes need, derived once from a request.
+ *
+ * Split out of `planTrip` so that re-planning an existing itinerary runs through
+ * exactly the same setup rather than a parallel copy of it that can drift.
+ */
+export type PlanSetup = {
+  context: PlanContext;
+  dates: string[];
+  /** Sightseeing candidates the traveller has not ruled out. */
+  eligible: Place[];
+  eateries: Place[];
+  /** Candidates already ruled out, keyed by id, for the caller to add to. */
+  rejected: Map<string, Rejection>;
+  /** What sightseeing may spend, once food money is held back. */
+  activityBudget: number;
+  planningMeals: boolean;
+};
+
+export function preparePlan(request: PlanRequest, options: PlannerOptions = {}): PlanSetup {
   const preferences = normalizePreferences(request.preferences);
   const dates = dateRange(request.startDate, request.endDate);
   const anchor = buildAnchor(request);
@@ -177,19 +196,37 @@ export function planTrip(request: PlanRequest, options: PlannerOptions = {}): It
     options,
   };
 
-  const days: WorkingDay[] = dates.map((date, index) => ({
+  const rejected = new Map<string, Rejection>();
+  const eligible = partitionEligible(sights, preferences, rejected);
+
+  return {
+    context,
+    dates,
+    eligible,
+    eateries,
+    rejected,
+    activityBudget: round2(budgetTotal - foodReserve),
+    planningMeals,
+  };
+}
+
+/** Empty days spanning the trip, with the traveller's own hours as the bounds. */
+export function buildDays(dates: readonly string[], preferences: Preferences): WorkingDay[] {
+  return dates.map((date, index) => ({
     date,
     index,
     bounds: { start: preferences.dayStart, end: preferences.dayEnd },
     items: [],
   }));
+}
 
+export function planTrip(request: PlanRequest, options: PlannerOptions = {}): Itinerary {
+  const setup = preparePlan(request, options);
+  const { context, dates, eligible, eateries, rejected, activityBudget, planningMeals } = setup;
+  const preferences = context.preferences;
+
+  const days = buildDays(dates, preferences);
   const state = newPlanState(days.length);
-  const rejected = new Map<string, Rejection>();
-  const eligible = partitionEligible(sights, preferences, rejected);
-
-  // Sightseeing spends only what is not held back for food.
-  const activityBudget = round2(budgetTotal - foodReserve);
 
   // --- Pass 1: must-sees, before the pool competes for the same slots ---
   const mustSees = eligible
@@ -227,14 +264,24 @@ export function planTrip(request: PlanRequest, options: PlannerOptions = {}): It
     ? scheduleMeals(eateries, days, context, state)
     : { notesByDay: new Map<number, string[]>(), displaced: [] as TimedItem[] };
 
-  // --- Pass 4: rehome anything a meal displaced ---
-  if (mealOutcome.displaced.length > 0) {
+  // --- Pass 4: fill again now that the meals are in ---
+  // Booking meals reshapes the days, which can open slots that were not there
+  // during pass 2 -- both for stops a meal displaced and for stops that never
+  // fitted in the first place. Skipping this pass leaves those slots empty, and
+  // a later re-plan then appears to "improve" a plan that was simply unfinished.
+  const stillOut = [
+    ...mealOutcome.displaced.map((entry) => entry.place),
+    ...eligible.filter((place) => !state.placed.has(place.id) && !rejected.has(place.id)),
+  ];
+  if (stillOut.length > 0) {
     fillGreedily(
-      mealOutcome.displaced.map((entry) => entry.place),
+      dedupeById(stillOut),
       days,
       context,
       state,
-      () => budgetTotal - state.spent,
+      // This pass may spend anything left, food reserve included: the meals it
+      // was held back for are already booked by now.
+      () => context.budgetTotal - state.spent,
     );
   }
 
@@ -246,7 +293,16 @@ export function planTrip(request: PlanRequest, options: PlannerOptions = {}): It
   return finalize(request, context, days, [...rejected.values()], mealOutcome.notesByDay);
 }
 
-function sightSpec(place: Place, context: PlanContext): InsertionSpec {
+function biased(spec: InsertionSpec, bias: InsertionBias | undefined): InsertionSpec {
+  if (!bias) return spec;
+  return {
+    ...spec,
+    baseScore: spec.baseScore + bias.baseBonus,
+    ...(bias.dayPreference ? { dayPreference: bias.dayPreference } : {}),
+  };
+}
+
+export function sightSpec(place: Place, context: PlanContext): InsertionSpec {
   return {
     place,
     kind: 'activity',
@@ -260,12 +316,19 @@ function sightSpec(place: Place, context: PlanContext): InsertionSpec {
  * every position of every day, and the single best is committed. Stops when
  * nothing left is worth the travel it would add.
  */
-function fillGreedily(
+/** Nudges applied to one candidate, used when re-planning to favour continuity. */
+export type InsertionBias = {
+  baseBonus: number;
+  dayPreference?: { dayIndex: number; bonus: number };
+};
+
+export function fillGreedily(
   candidates: readonly Place[],
   days: WorkingDay[],
   context: PlanContext,
   state: PlanState,
   remainingBudget: () => number,
+  bias?: (place: Place) => InsertionBias,
 ): void {
   let progress = true;
   while (progress) {
@@ -275,7 +338,7 @@ function fillGreedily(
     for (const place of candidates) {
       if (state.placed.has(place.id)) continue;
       const candidate = bestInsertion(
-        sightSpec(place, context),
+        biased(sightSpec(place, context), bias?.(place)),
         days,
         context,
         remainingBudget(),
@@ -321,7 +384,7 @@ function partitionEligible(
   return eligible;
 }
 
-function describeRejection(
+export function describeRejection(
   place: Place,
   dates: readonly string[],
   context: PlanContext,
@@ -359,7 +422,7 @@ function dedupeById(places: readonly Place[]): Place[] {
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 
-function finalize(
+export function finalize(
   request: PlanRequest,
   context: PlanContext,
   days: readonly WorkingDay[],

@@ -1,4 +1,4 @@
-import type { Itinerary } from '@atp/core';
+import type { Change, Itinerary, ScheduledItem } from '@atp/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -6,11 +6,13 @@ import {
   fetchDestination,
   fetchDestinations,
   requestPlan,
+  requestReplan,
   type Destination,
   type DestinationSummary,
   type PlanFormState,
 } from './api.js';
 import { DayTimeline, TripSummary } from './components/DayTimeline.js';
+import { DisruptionBar, type DisruptionAction } from './components/DisruptionBar.js';
 import { ItineraryMap } from './components/ItineraryMap.js';
 import { TripForm } from './components/TripForm.js';
 import { addDaysIso, formatDayLabel, todayIso } from './format.js';
@@ -48,6 +50,12 @@ export function App() {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [planning, setPlanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Re-planning state. Pins survive across rounds, so the traveller only has to
+  // say "keep this" once.
+  const [pinned, setPinned] = useState<string[]>([]);
+  const [changes, setChanges] = useState<Change[]>([]);
+  const [replanSummary, setReplanSummary] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,12 +124,49 @@ export function App() {
       setPlannedBudget(form.budgetTotal);
       setActiveDay(0);
       setSelectedPlaceId(null);
+      // A fresh plan starts a fresh conversation about it.
+      setPinned([]);
+      setChanges([]);
+      setReplanSummary([]);
     } catch (cause: unknown) {
       setError(describeError(cause));
     } finally {
       setPlanning(false);
     }
   }, [form]);
+
+  const disrupt = useCallback(
+    async (action: DisruptionAction, now?: { date: string; minute: string }) => {
+      if (!itinerary) return;
+      setPlanning(true);
+      setError(null);
+      try {
+        const result = await requestReplan(form, itinerary, [action], {
+          ...(now ? { now } : {}),
+          pinned,
+        });
+        setItinerary(result.itinerary);
+        setChanges(result.changes);
+        setReplanSummary(result.summary);
+        setPinned(result.pinned);
+      } catch (cause: unknown) {
+        setError(describeError(cause));
+      } finally {
+        setPlanning(false);
+      }
+    },
+    [form, itinerary, pinned],
+  );
+
+  /** The selected stop, with the day it sits on: what the stop actions act upon. */
+  const selectedStop = useMemo<{ item: ScheduledItem; date: string } | null>(() => {
+    if (!itinerary || !selectedPlaceId) return null;
+    for (const day of itinerary.days) {
+      const item = day.items.find((entry) => entry.placeId === selectedPlaceId);
+      if (item) return { item, date: day.date };
+    }
+    return null;
+  }, [itinerary, selectedPlaceId]);
 
   // The weather strip only shows hours the traveller intends to be out in.
   const dayWindowHours = useMemo<[number, number]>(() => {
@@ -173,12 +218,26 @@ export function App() {
         {itinerary ? (
           <>
             <TripSummary itinerary={itinerary} budgetTotal={plannedBudget} />
+            <DisruptionBar
+              itinerary={itinerary}
+              selected={selectedStop}
+              pinned={pinned}
+              changes={changes}
+              summary={replanSummary}
+              busy={planning}
+              onDisrupt={disrupt}
+              onDismiss={() => {
+                setChanges([]);
+                setReplanSummary([]);
+              }}
+            />
             {itinerary.days.map((day, index) => (
               <DayTimeline
                 key={day.date}
                 day={day}
                 currency={itinerary.currency}
                 dayWindowHours={dayWindowHours}
+                pinned={pinned}
                 selectedPlaceId={selectedPlaceId}
                 onSelectPlace={(placeId) => {
                   setSelectedPlaceId(placeId);

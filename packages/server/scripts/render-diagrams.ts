@@ -14,6 +14,8 @@ import {
   formatDuration,
   openWindowsOn,
   planTrip,
+  replan,
+  type Change,
   type DailyWeather,
   type Itinerary,
   type Place,
@@ -44,9 +46,14 @@ const PREFERENCES = {
   dayEnd: 22 * 60,
   meals: ['lunch' as const, 'dinner' as const],
   cuisines: ['catalan', 'tapas'],
+  mustSeeIds: [] as string[],
+  avoidCategories: [] as never[],
+  dietary: [] as never[],
+  maxWalkMinutes: 22,
+  preferredModes: ['walk' as const, 'transit' as const],
 };
 
-async function barcelonaTrip(): Promise<Itinerary> {
+async function barcelonaTrip(): Promise<{ request: PlanRequest; itinerary: Itinerary }> {
   const dates = ['2026-05-11', '2026-05-12', '2026-05-13', '2026-05-14'];
   const weather = await new SyntheticWeatherProvider().forecast(BARCELONA.center, dates);
 
@@ -59,7 +66,7 @@ async function barcelonaTrip(): Promise<Itinerary> {
     candidates: BARCELONA_PLACES,
     weather,
   };
-  return planTrip(request);
+  return { request, itinerary: planTrip(request) };
 }
 
 // ---------------------------------------------------------------------------
@@ -678,8 +685,138 @@ function renderPipeline(): string {
 }
 
 // ---------------------------------------------------------------------------
+// 6. A disruption being absorbed
+// ---------------------------------------------------------------------------
 
-const itinerary = await barcelonaTrip();
+/**
+ * The same day before and after the traveller loses two hours.
+ *
+ * Produced by an actual `replan` call, change list included, so the figure and
+ * the engine cannot disagree about what happened.
+ */
+function renderReplan(request: PlanRequest, itinerary: Itinerary): string {
+  const dayIndex = itinerary.days.reduce(
+    (best, day, index) => (day.items.length > itinerary.days[best]!.items.length ? index : best),
+    0,
+  );
+  const date = itinerary.days[dayIndex]!.date;
+  const lostMinutes = 120;
+  const atMinute = 11 * 60;
+
+  const result = replan({
+    itinerary,
+    base: request,
+    now: { date, minute: atMinute },
+    disruptions: [{ kind: 'running-late', minutes: lostMinutes }],
+  });
+
+  const before = itinerary.days[dayIndex]!;
+  const after = result.itinerary.days[dayIndex]!;
+
+  const fromHour = 9;
+  const toHour = 22;
+  const width = 900;
+  const gutter = 214;
+  const plotLeft = gutter;
+  const plotRight = width - 24;
+  const plotWidth = plotRight - plotLeft;
+  const rowHeight = 26;
+  const headerHeight = 78;
+
+  const notable = result.changes.filter((change) => change.kind !== 'kept');
+  const panelHeight = (rows: number): number => 30 + rows * rowHeight;
+  const changesHeight = notable.length > 0 ? 26 + notable.length * 17 : 0;
+  const height =
+    headerHeight + panelHeight(before.items.length) + panelHeight(after.items.length) + changesHeight + 46;
+
+  const xOf = (minute: number): number =>
+    plotLeft + ((minute - fromHour * 60) / ((toHour - fromHour) * 60)) * plotWidth;
+
+  const body: string[] = [];
+  body.push(text(24, 30, 'Absorbing two lost hours', { size: 16, weight: 650 }));
+  body.push(
+    text(
+      24,
+      50,
+      `${date}: at ${formatClock(atMinute)} the traveller is ${formatDuration(lostMinutes)} behind. What had already happened is left alone.`,
+      { size: 11.5, className: 't-dim' },
+    ),
+  );
+
+  const drawPanel = (
+    label: string,
+    items: typeof before.items,
+    top: number,
+    highlightFrom: number | null,
+  ): void => {
+    body.push(text(24, top + 14, label, { size: 12, weight: 600 }));
+
+    for (let hour = fromHour; hour <= toHour; hour += 1) {
+      const x = xOf(hour * 60);
+      body.push(line(x, top + 22, x, top + 22 + items.length * rowHeight));
+    }
+
+    if (highlightFrom !== null) {
+      // The moment the plan resumes, marked once rather than annotated per row.
+      const x = xOf(highlightFrom);
+      body.push(line(x, top + 18, x, top + 26 + items.length * rowHeight, 'stroke="var(--s2)" stroke-width="1.5"'));
+      body.push(text(x + 5, top + 16, `back on the road ${formatClock(highlightFrom)}`, { size: 9.5, fill: 'var(--s2)' }));
+    }
+
+    items.forEach((item, index) => {
+      const y = top + 26 + index * rowHeight;
+      const past = item.start < atMinute;
+      const colour = item.kind === 'meal' ? 'var(--s2)' : past ? 'var(--ink-3)' : 'var(--s1)';
+      body.push(rect(xOf(item.start), y, xOf(item.end) - xOf(item.start), 14, colour, 4));
+      body.push(
+        text(gutter - 12, y + 11, truncate(item.place.name, 31), { size: 10.5, anchor: 'end', className: past ? 't-faint' : undefined }),
+      );
+    });
+  };
+
+  const beforeTop = headerHeight;
+  drawPanel('Planned', before.items, beforeTop, null);
+
+  const afterTop = beforeTop + panelHeight(before.items.length);
+  drawPanel('Re-planned', after.items, afterTop, atMinute + lostMinutes);
+
+  if (notable.length > 0) {
+    const listTop = afterTop + panelHeight(after.items.length) + 12;
+    body.push(text(24, listTop, 'What the agent changed, and why', { size: 11, weight: 600, className: 't-dim' }));
+    notable.forEach((change, index) => {
+      const y = listTop + 18 + index * 17;
+      body.push(text(24, y, change.kind.toUpperCase(), { size: 9, weight: 700, fill: kindColour(change) }));
+      body.push(text(92, y, truncate(change.name, 34), { size: 10.5, weight: 600 }));
+      body.push(text(320, y, truncate(change.reason, 78), { size: 10.5, className: 't-dim' }));
+    });
+  }
+
+  body.push(
+    legend(24, height - 14, [
+      { color: 'var(--ink-3)', label: 'already happened' },
+      { color: 'var(--s1)', label: 'still to come' },
+      { color: 'var(--s2)', label: 'meal' },
+    ]),
+  );
+
+  return svgDocument(
+    width,
+    height,
+    'The same day before and after two hours are lost',
+    result.summary.join(' '),
+    body.join('\n'),
+  );
+}
+
+function kindColour(change: Change): string {
+  if (change.kind === 'dropped') return 'var(--s2)';
+  if (change.kind === 'added') return 'var(--s3)';
+  return 'var(--s1)';
+}
+
+// ---------------------------------------------------------------------------
+
+const { request: tripRequest, itinerary } = await barcelonaTrip();
 
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -689,6 +826,7 @@ const outputs: [string, string][] = [
   ['weather-reorder.svg', renderWeatherReorder()],
   ['budget.svg', renderBudget(itinerary, 900)],
   ['day-map.svg', renderDayMap(itinerary)],
+  ['replan.svg', renderReplan(tripRequest, itinerary)],
 ];
 
 for (const [name, contents] of outputs) {

@@ -65,6 +65,22 @@ export type TimedItem = {
    * what dinners do.
    */
   startWindow?: TimeWindow;
+  /**
+   * Pins the visit to an exact start time.
+   *
+   * Two things need this: stops that have already happened, and stops the
+   * traveller has pinned or booked.
+   */
+  fixedStart?: MinuteOfDay;
+  /**
+   * Marks a `fixedStart` as a fact rather than a promise.
+   *
+   * A stop that has already happened is not subject to feasibility: the
+   * traveller was there. A stop they have merely *pinned* is a promise, and an
+   * arrangement that cannot get them there in time is genuinely infeasible --
+   * which is the right answer rather than an inconvenience to round away.
+   */
+  immovable?: boolean;
   /** Value of having this in the plan, before travel and weather adjustments. */
   baseScore: number;
   /** Whether this consumes the day's sightseeing-stop allowance. Meals do not. */
@@ -152,19 +168,37 @@ export function retime(
   for (const entry of sequence) {
     const leg = matrix.leg(previousId, entry.place.id);
     const arriveAt = Math.max(cursor + leg.minutes, entry.startWindow?.start ?? 0);
-    const start = earliestFeasibleStart(
-      entry.place.openingHours,
-      day.date,
-      arriveAt,
-      entry.place.dwellMinutes,
-      day.bounds.end,
-    );
+
+    let start: MinuteOfDay | null;
+    if (entry.fixedStart !== undefined) {
+      // A pinned time constrains the rest of the day; a stop that already
+      // happened simply happened, whatever the travel arithmetic now says.
+      start = entry.immovable || arriveAt <= entry.fixedStart ? entry.fixedStart : null;
+    } else {
+      start = earliestFeasibleStart(
+        entry.place.openingHours,
+        day.date,
+        arriveAt,
+        entry.place.dwellMinutes,
+        day.bounds.end,
+      );
+    }
     if (start === null) return null;
     if (entry.startWindow && start > entry.startWindow.end) return null;
 
+    // A day may never run backwards or overlap itself. For a flexible visit this
+    // holds automatically, since its start is derived from the cursor. For a
+    // fixed one it has to be checked: without this, an arrangement that puts a
+    // new stop *before* a visit that already happened is judged feasible, and
+    // the result is a day whose second item starts four hours before its first.
+    const previous = timed[timed.length - 1];
+    if (previous && start < previous.end) return null;
+
     const end = start + entry.place.dwellMinutes;
     timed.push({ ...entry, start, end, arrival: leg });
-    cursor = end + pace.bufferMinutes;
+    // Never rewind past the day's own start: an immovable morning stop must not
+    // let a re-plan slot new stops back into a morning that is already over.
+    cursor = Math.max(day.bounds.start, end + pace.bufferMinutes);
     previousId = entry.place.id;
   }
 
@@ -236,6 +270,14 @@ export type InsertionSpec = {
   reasons?: string[];
   countsAsStop: boolean;
   /**
+   * Nudges an insertion towards one particular day.
+   *
+   * Used when re-planning: a traveller who is running twenty minutes late wants
+   * the rest of their day adjusted, not their whole trip reshuffled. Preferring
+   * the day a stop was already on keeps the new plan recognisably the old one.
+   */
+  dayPreference?: { dayIndex: number; bonus: number };
+  /**
    * Refuse an insertion that adds more than this much travel to the day.
    *
    * The travel penalty alone is a soft trade the score can outbid, which is right
@@ -258,7 +300,7 @@ export type InsertionCandidate = {
   addedCost: number;
 };
 
-function draftItem(spec: InsertionSpec): TimedItem {
+export function draftItem(spec: InsertionSpec): TimedItem {
   return {
     place: spec.place,
     kind: spec.kind,
@@ -320,7 +362,9 @@ export function bestInsertionForDay(
     const weatherDelta = context.options.ignoreWeather
       ? 0
       : (dayWeatherScore(timed, day, context) - baseWeather) * WEATHER_WEIGHT;
-    const gain = spec.baseScore - penalty + weatherDelta;
+    const continuity =
+      spec.dayPreference && spec.dayPreference.dayIndex === day.index ? spec.dayPreference.bonus : 0;
+    const gain = spec.baseScore - penalty + weatherDelta + continuity;
 
     // Positions are tried in order, so an exact tie resolves to the later slot.
     // That keeps places in the order the planner chose them -- the most wanted

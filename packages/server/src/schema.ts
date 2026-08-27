@@ -94,7 +94,68 @@ export const planRequestSchema = z
     { message: 'trips longer than 21 days are not supported', path: ['endDate'] },
   );
 
+/** Where the traveller is in the trip. */
+const momentSchema = z.object({ date: isoDate, minute: clock });
+
+const dailyWeatherSchema = z.object({
+  date: isoDate,
+  condition: z.enum(['clear', 'partly-cloudy', 'cloudy', 'rain', 'heavy-rain', 'snow', 'storm', 'fog']),
+  tempMinC: z.number(),
+  tempMaxC: z.number(),
+  precipitationChance: z.number().min(0).max(1),
+  precipitationMm: z.number().min(0),
+  windKph: z.number().min(0),
+  hourly: z
+    .array(
+      z.object({
+        hour: z.number().int().min(0).max(23),
+        tempC: z.number(),
+        precipitationChance: z.number().min(0).max(1),
+        precipitationMm: z.number().min(0),
+      }),
+    )
+    .optional(),
+});
+
+const disruptionSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('running-late'), minutes: z.number().int().min(1).max(24 * 60) }),
+  z.object({ kind: z.literal('place-closed'), placeId: z.string().min(1), date: isoDate.optional() }),
+  z.object({ kind: z.literal('forecast-changed'), weather: z.array(dailyWeatherSchema).min(1) }),
+  z.object({ kind: z.literal('budget-changed'), total: z.number().min(0).max(10_000_000) }),
+  z.object({ kind: z.literal('pin'), placeId: z.string().min(1) }),
+  z.object({ kind: z.literal('unpin'), placeId: z.string().min(1) }),
+  z.object({ kind: z.literal('move'), placeId: z.string().min(1), toDate: isoDate }),
+  z.object({ kind: z.literal('drop'), placeId: z.string().min(1) }),
+  z.object({ kind: z.literal('add'), placeId: z.string().min(1) }),
+]);
+
+/**
+ * A re-plan carries the original request rather than a server-side session.
+ *
+ * Keeping the server stateless means the client owns the plan, which is what
+ * makes "undo" and "try this instead" the client's business rather than a
+ * synchronisation problem.
+ */
+export const replanRequestSchema = planRequestSchema.safeExtend({
+  /** Which stops are already scheduled, so the server can rebuild the itinerary. */
+  scheduled: z
+    .array(
+      z.object({
+        date: isoDate,
+        placeId: z.string().min(1),
+        start: z.number().int().min(0).max(2 * 24 * 60),
+        kind: z.enum(['activity', 'meal', 'lodging']).default('activity'),
+        mealKind: z.enum(['breakfast', 'lunch', 'dinner']).optional(),
+      }),
+    )
+    .max(400),
+  now: momentSchema.optional(),
+  disruptions: z.array(disruptionSchema).max(40).default([]),
+  pinned: z.array(z.string()).max(200).default([]),
+});
+
 export type PlanRequestInput = z.infer<typeof planRequestSchema>;
+export type ReplanRequestInput = z.infer<typeof replanRequestSchema>;
 export type PreferencesInput = z.infer<typeof preferencesSchema>;
 
 /** The preference set implied by sending nothing at all. */

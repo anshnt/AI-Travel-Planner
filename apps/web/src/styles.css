@@ -756,3 +756,158 @@ button:focus-visible {
   font-weight: 400;
   color: var(--text-dim);
 }
+
+/* ---------- disruptions ---------- */
+
+.atp-disrupt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.atp-disrupt h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.atp-disrupt__where {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.atp-disrupt__where label {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.atp-disrupt__where select,
+.atp-disrupt__where input,
+.atp-disrupt__move {
+  padding: 5px 7px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.atp-disrupt__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.atp-disrupt__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.atp-disrupt__hint {
+  margin: 0;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.atp-changes {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.atp-changes__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.atp-changes__head p {
+  margin: 0;
+}
+
+.atp-changes__dismiss {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.atp-changes ul {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.atp-change {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 2px 8px;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.atp-change__kind {
+  grid-row: span 2;
+  align-self: start;
+  padding: 2px 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.atp-change--dropped .atp-change__kind {
+  color: var(--danger);
+}
+
+.atp-change--added .atp-change__kind {
+  color: var(--ok);
+}
+
+.atp-change--moved .atp-change__kind,
+.atp-change--retimed .atp-change__kind {
+  color: var(--accent);
+}
+
+.atp-change__name {
+  font-weight: 600;
+}
+
+.atp-change__why {
+  color: var(--text-dim);
+}
+
+.atp-change__when {
+  grid-column: 2;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.atp-stop__pin {
+  font-size: 10px;
+}

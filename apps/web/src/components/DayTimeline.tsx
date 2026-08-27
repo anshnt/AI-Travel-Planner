@@ -21,11 +21,13 @@ type Props = {
   currency: string;
   /** The traveller's day window in hours, used to frame the weather strip. */
   dayWindowHours: [number, number];
+  /** Ids the traveller has pinned, so the timeline can mark them. */
+  pinned: readonly string[];
   selectedPlaceId: string | null;
   onSelectPlace: (placeId: string | null) => void;
 };
 
-export function DayTimeline({ day, currency, dayWindowHours, selectedPlaceId, onSelectPlace }: Props) {
+export function DayTimeline({ day, currency, dayWindowHours, pinned, selectedPlaceId, onSelectPlace }: Props) {
   const ordinals = activityOrdinals(day.items);
 
   return (
@@ -78,7 +80,14 @@ export function DayTimeline({ day, currency, dayWindowHours, selectedPlaceId, on
                   </span>
                   <span className="atp-stop__body">
                     <span className="atp-stop__title">
-                      <span className="atp-stop__name">{item.place.name}</span>
+                      <span className="atp-stop__name">
+                        {pinned.includes(item.placeId) ? (
+                          <span className="atp-stop__pin" title="Pinned: re-planning will not move this">
+                            📌{' '}
+                          </span>
+                        ) : null}
+                        {item.place.name}
+                      </span>
                       <span className="atp-stop__time">
                         {formatClock(item.start)}&ndash;{formatClock(item.end)}
                       </span>

@@ -309,6 +309,188 @@ describe('POST /api/plan: meals', () => {
   });
 });
 
+function hasPlace(itinerary: Itinerary, date: string, placeId: string): boolean {
+  return itinerary.days.some((day) => day.date === date && day.items.some((item) => item.placeId === placeId));
+}
+
+describe('POST /api/replan', () => {
+  /** Plans a trip, then re-plans it through the API the way a client would. */
+  async function planThenReplan(body: Record<string, unknown>) {
+    const first = await call('POST', '/api/plan', basePlan);
+    const itinerary: Itinerary = first.json.itinerary;
+    const scheduled = itinerary.days.flatMap((day) =>
+      day.items.map((item) => ({
+        date: day.date,
+        placeId: item.placeId,
+        start: item.start,
+        kind: item.kind,
+        ...(item.mealKind ? { mealKind: item.mealKind } : {}),
+      })),
+    );
+    const second = await call('POST', '/api/replan', { ...basePlan, scheduled, ...body });
+    return { before: itinerary, scheduled, status: second.status, json: second.json };
+  }
+
+  it('returns the new plan, the changes and a summary', async () => {
+    const { status, json } = await planThenReplan({
+      now: { date: '2026-05-11', minute: '11:00' },
+      disruptions: [{ kind: 'running-late', minutes: 90 }],
+    });
+    expect(status).toBe(200);
+    expect(json.itinerary.days).toHaveLength(3);
+    expect(Array.isArray(json.changes)).toBe(true);
+    expect(json.summary.join(' ')).toMatch(/running 1h 30m late/);
+    expect(Array.isArray(json.pinned)).toBe(true);
+  });
+
+  it('leaves an undisrupted plan alone', async () => {
+    const { before, status, json } = await planThenReplan({ disruptions: [] });
+    expect(status).toBe(200);
+    const scheduledAfter = json.itinerary.days.flatMap((day: { items: { placeId: string }[] }) =>
+      day.items.map((item) => item.placeId),
+    );
+    const scheduledBefore = before.days.flatMap((day) => day.items.map((item) => item.placeId));
+    expect(scheduledAfter).toEqual(scheduledBefore);
+  });
+
+  it('drops a stop reported closed and says so', async () => {
+    const { before, json } = await planThenReplan({
+      disruptions: [{ kind: 'place-closed', placeId: 'bcn-sagrada-familia' }],
+    });
+    const wasScheduled = before.days.some((day) =>
+      day.items.some((item) => item.placeId === 'bcn-sagrada-familia'),
+    );
+    const stillScheduled = json.itinerary.days.some((day: { items: { placeId: string }[] }) =>
+      day.items.some((item) => item.placeId === 'bcn-sagrada-familia'),
+    );
+    expect(stillScheduled).toBe(false);
+    if (wasScheduled) {
+      const change = json.changes.find((c: { placeId: string }) => c.placeId === 'bcn-sagrada-familia');
+      expect(change).toMatchObject({ kind: 'dropped', reason: 'reported as closed' });
+    }
+  });
+
+  it('honours a pin across the round trip', async () => {
+    const first = await call('POST', '/api/plan', basePlan);
+    const itinerary: Itinerary = first.json.itinerary;
+    const target = itinerary.days[0]!.items[0]!;
+    const scheduled = itinerary.days.flatMap((day) =>
+      day.items.map((item) => ({ date: day.date, placeId: item.placeId, start: item.start, kind: item.kind })),
+    );
+
+    const { json } = await call('POST', '/api/replan', {
+      ...basePlan,
+      scheduled,
+      disruptions: [{ kind: 'pin', placeId: target.placeId }],
+    });
+    expect(json.pinned).toContain(target.placeId);
+  });
+
+  it('keeps the new plan inside a reduced budget', async () => {
+    const { json } = await planThenReplan({ disruptions: [{ kind: 'budget-changed', total: 80 }] });
+    expect(json.itinerary.totals.cost).toBeLessThanOrEqual(80);
+  });
+
+  it('accepts clock strings for the current moment', async () => {
+    const { status } = await planThenReplan({
+      now: { date: '2026-05-12', minute: '14:30' },
+      disruptions: [{ kind: 'running-late', minutes: 20 }],
+    });
+    expect(status).toBe(200);
+  });
+
+  it('rejects an unknown place in the schedule rather than silently ignoring it', async () => {
+    const { status, json } = await call('POST', '/api/replan', {
+      ...basePlan,
+      scheduled: [{ date: '2026-05-11', placeId: 'not-a-place', start: 600 }],
+      disruptions: [],
+    });
+    expect(status).toBe(400);
+    expect(json.error).toMatch(/Unknown placeId/);
+    expect(json.ids).toEqual(['not-a-place']);
+  });
+
+  it('rejects a malformed disruption', async () => {
+    const { status } = await call('POST', '/api/replan', {
+      ...basePlan,
+      scheduled: [],
+      disruptions: [{ kind: 'teleport', placeId: 'x' }],
+    });
+    expect(status).toBe(400);
+  });
+
+  it('rejects a negative lateness', async () => {
+    const { status } = await call('POST', '/api/replan', {
+      ...basePlan,
+      scheduled: [],
+      disruptions: [{ kind: 'running-late', minutes: -30 }],
+    });
+    expect(status).toBe(400);
+  });
+
+  it('404s an unknown destination', async () => {
+    const { status } = await call('POST', '/api/replan', {
+      ...basePlan,
+      destinationId: 'atlantis',
+      scheduled: [],
+      disruptions: [],
+    });
+    expect(status).toBe(404);
+  });
+
+  it('moves a stop to a requested day, clearing space if it has to', async () => {
+    // A roomy budget, so the move is not blocked by money.
+    const roomy = { ...basePlan, budgetTotal: 1200 };
+    const first = await call('POST', '/api/plan', roomy);
+    const itinerary: Itinerary = first.json.itinerary;
+    const target = itinerary.days[0]!.items.find((item) => item.kind === 'activity')!;
+    const scheduled = itinerary.days.flatMap((day) =>
+      day.items.map((item) => ({ date: day.date, placeId: item.placeId, start: item.start, kind: item.kind })),
+    );
+
+    const { json } = await call('POST', '/api/replan', {
+      ...roomy,
+      scheduled,
+      disruptions: [{ kind: 'move', placeId: target.placeId, toDate: '2026-05-13' }],
+    });
+
+    const landedOn = json.itinerary.days.find((day: { items: { placeId: string }[] }) =>
+      day.items.some((item) => item.placeId === target.placeId),
+    );
+    expect(landedOn?.date ?? 'dropped').toBe('2026-05-13');
+  });
+
+  it('says it is the money, not the room, when a move cannot be afforded', async () => {
+    // This trip already spends almost all of a 500 budget.
+    const first = await call('POST', '/api/plan', basePlan);
+    const itinerary: Itinerary = first.json.itinerary;
+    const dear = itinerary.days
+      .flatMap((day) => day.items)
+      .filter((item) => item.kind === 'activity')
+      .reduce((most, item) => (item.cost > most.cost ? item : most));
+    if (dear.cost === 0) return;
+
+    const scheduled = itinerary.days.flatMap((day) =>
+      day.items.map((item) => ({ date: day.date, placeId: item.placeId, start: item.start, kind: item.kind })),
+    );
+    const otherDate = itinerary.days.map((day) => day.date).find((date) => !hasPlace(itinerary, date, dear.placeId));
+
+    const { json } = await call('POST', '/api/replan', {
+      ...basePlan,
+      scheduled,
+      disruptions: [{ kind: 'move', placeId: dear.placeId, toDate: otherDate }],
+    });
+
+    const rejection = json.itinerary.rejected.find((entry: { placeId: string }) => entry.placeId === dear.placeId);
+    if (rejection) {
+      expect(rejection.reason).toBe('over-budget');
+      expect(rejection.detail).toMatch(/of the budget is left/);
+      const change = json.changes.find((c: { placeId: string }) => c.placeId === dear.placeId);
+      expect(change.reason).toBe(rejection.detail);
+    }
+  });
+});
+
 describe('unknown routes', () => {
   it('404s with JSON rather than HTML', async () => {
     const { status, json } = await call('GET', '/api/nope');
