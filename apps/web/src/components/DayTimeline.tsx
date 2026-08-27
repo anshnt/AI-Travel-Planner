@@ -192,9 +192,28 @@ export function TripSummary({ itinerary, budgetTotal }: { itinerary: Itinerary; 
         <div className="atp-meter__fill" style={{ width: `${usedFraction * 100}%` }} />
       </div>
 
+      {itinerary.optimisation ? (
+        <details className="atp-rejected">
+          <summary>
+            {itinerary.optimisation.travelMinutesSaved > 0
+              ? `Rearranged the route to save ${formatDuration(itinerary.optimisation.travelMinutesSaved)} of travel`
+              : `Rearranged ${itinerary.optimisation.moves.length} ${itinerary.optimisation.moves.length === 1 ? 'stop' : 'stops'} for a better fit`}
+          </summary>
+          <ul>
+            {itinerary.optimisation.moves.map((move) => (
+              <li key={move}>{move}</li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+
       {itinerary.rejected.length > 0 ? (
         <details className="atp-rejected">
-          <summary>{itinerary.rejected.length} candidates left out</summary>
+          <summary>
+            {itinerary.rejected.length === 1
+              ? '1 candidate left out'
+              : `${itinerary.rejected.length} candidates left out`}
+          </summary>
           <ul>
             {itinerary.rejected.map((rejection) => (
               <li key={rejection.placeId}>

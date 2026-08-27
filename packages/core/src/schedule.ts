@@ -43,6 +43,8 @@ export type PlannerOptions = {
   ignoreWeather?: boolean;
   /** Skip meal scheduling entirely. */
   skipMeals?: boolean;
+  /** Skip the route-optimisation pass, leaving the greedy arrangement as built. */
+  skipOptimisation?: boolean;
 };
 
 /** Cost of visiting a place for the whole party. */

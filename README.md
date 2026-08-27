@@ -133,12 +133,42 @@ shrink the trip.
 
 ## How it is built
 
-![Four passes over the same day objects. Constraints (budget, weather, opening hours, travel time, restaurants, preferences) feed all of them. Pass 1 places must-sees first. Pass 2 is repeated best-insertion over every candidate in every position of every day. Pass 3 books meals once a route exists. Pass 4 rehomes anything a meal displaced. The output is an itinerary with timed stops, travel legs, costs and a reason for every decision.](docs/planning-pipeline.svg)
+![Passes over the same day objects. Constraints (budget, weather, opening hours, travel time, restaurants, preferences) feed all of them. Pass 1 places must-sees first. Pass 2 is repeated best-insertion over every candidate in every position of every day. Pass 3 books meals once a route exists. Pass 4 re-fills anything still unplaced. A fifth pass rearranges what insertion committed to too early. The output is an itinerary with timed stops, travel legs, costs and a reason for every decision.](docs/planning-pipeline.svg)
 
 Pass 2 is slower than filling days front-to-back, but it is what produces days
 that hang together geographically. Pass 3 runs *after* pass 2 on purpose:
 booking lunch first, with nothing else on the map, just picks the best-reviewed
 place in the city and drags the day across town to reach it.
+
+A fifth pass then **rearranges** what insertion committed to too early. Insertion
+decides each placement at the moment it makes it, so a stop added early can leave
+a detour a later addition would have avoided. The pass tries a fixed repertoire of
+moves — relocate a stop within its day, reverse a run of stops to undo a crossing,
+move a stop to another day, and hold an outdoor stop back until a shower passes —
+keeping any that improve the objective and stopping when none do.
+
+It never adds or removes a stop, which is what keeps it honest: whatever it does,
+the traveller gets the same trip, arranged better.
+
+```
+$ npm run measure
+Barcelona  5d art + food, packed        7h 50m ->   7h 1m  -49m      10.4%  stops 18->18
+Kyoto      3d art + food, packed         8h 9m ->  7h 19m  -50m      10.2%  stops 15->15
+Lisbon     5d outdoors, relaxed         9h 19m ->  8h 26m  -53m       9.5%  stops 14->14
+...
+across 18 plans: 126h 9m -> 119h 30m (saved 6h 39m, 5.3%)
+```
+
+The move it reports is measured, not assumed. A rearrangement that costs four
+minutes of walking to put an outdoor stop in the dry is a good trade, and calling
+that "saving a detour" would be a lie — so the label follows the measurement:
+
+```
+moved Praça do Comércio to fourth on 2026-05-12, saving 21m of travel
+held Parc de la Ciutadella back to 13:00 on 2026-05-13, after the rain
+moved Alfama from 2026-05-12 to 2026-05-13, at the cost of 4m more travel
+  but a better fit for the day
+```
 
 Two decisions do most of the work:
 
@@ -177,6 +207,7 @@ npm test          # the engine and API test suites
 npm run typecheck
 npm run build
 npm run diagrams  # regenerate the figures in docs/ from real planner output
+npm run measure   # what the route-optimisation pass is worth, across every seed city
 npm run demo --workspace @atp/server   # print a planned trip to the terminal
 ```
 
@@ -191,7 +222,8 @@ packages/core     the domain model and the planning engine — pure TypeScript, 
   weather.ts      how well a place suits the conditions in its slot
   schedule.ts     re-timing, insertion search, and the shared plan state
   meals.ts        meal windows, restaurant scoring, and making room to eat
-  planner.ts      the four passes, and the notes that explain them
+  planner.ts      the five passes, and the notes that explain them
+  optimise.ts     local search: relocate, reverse, move day, wait out the rain
   replan.ts       disruptions, what is immovable, and the diff that explains it
 
 packages/server   HTTP API, the destination dataset, and the forecast provider
@@ -258,11 +290,9 @@ curl -s localhost:8787/api/replan -H 'content-type: application/json' -d '{
 Stated plainly, because a planner that overstates itself is worse than one that
 does less:
 
-- **It reorders around the weather, but never delays for it.** If a shower is
-  forecast for the next hour, the planner will move an indoor stop into it — but
-  it will not hold an outdoor stop back forty minutes to let the rain pass.
-- **The route is greedy, not optimised.** Insertion produces coherent days, but
-  no local search pass runs afterwards to shave off the remaining detours.
+- **The local search is a first-improvement hill climb.** It stops at the first
+  arrangement none of its moves can improve, which is not necessarily the best
+  one. There is no restart, no simulated annealing, and no swap-two-stops move.
 - **The data is a seed set, not live.** See below.
 
 ## About the data

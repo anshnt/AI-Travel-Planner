@@ -11,7 +11,8 @@
     "build": "tsc -b tsconfig.json",
     "typecheck": "tsc -b tsconfig.json",
     "demo": "npm run build -w @atp/core && tsx scripts/demo.ts",
-    "diagrams": "npm run build -w @atp/core && tsx scripts/render-diagrams.ts"
+    "diagrams": "npm run build -w @atp/core && tsx scripts/render-diagrams.ts",
+    "measure": "npm run build -w @atp/core && tsx scripts/measure-optimisation.ts"
   },
   "dependencies": {
     "@atp/core": "*",

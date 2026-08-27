@@ -615,10 +615,12 @@ function renderPipeline(): string {
 
   body.push(text(24, 30, 'How a plan gets built', { size: 16, weight: 650 }));
   body.push(
-    text(24, 50, 'Four passes over the same day objects. Every pass re-times each day from scratch rather than patching it.', {
-      size: 11.5,
-      className: 't-dim',
-    }),
+    text(
+      24,
+      50,
+      'Five passes over the same day objects. Every pass re-times each day from scratch rather than patching it.',
+      { size: 11.5, className: 't-dim' },
+    ),
   );
 
   // The constraints, as inputs along the top.
@@ -632,24 +634,25 @@ function renderPipeline(): string {
   }
 
   const passes = [
-    { title: '1 · Must-sees', detail: 'placed first, before\nthe pool competes\nfor the same slots' },
-    { title: '2 · Best-insertion', detail: 'every candidate, every\nposition, every day —\ncommit the best gain' },
-    { title: '3 · Meals', detail: 'booked into their windows\nonce a route exists to\nsit them on' },
-    { title: '4 · Rehome', detail: 'anything a meal\ndisplaced gets another\nchance elsewhere' },
+    { title: '1 · Must-sees', detail: 'placed first, before\nthe pool competes\nfor the slots' },
+    { title: '2 · Insertion', detail: 'every candidate, every\nposition, every day —\nbest gain wins' },
+    { title: '3 · Meals', detail: 'into their windows,\nonce a route exists\nto sit them on' },
+    { title: '4 · Re-fill', detail: 'booking meals opens\nslots pass 2 never\nsaw' },
+    { title: '5 · Rearrange', detail: 'relocate, reverse,\nchange day, or wait\nout a shower' },
   ];
 
   const boxTop = 126;
   const boxHeight = 112;
-  const gap = 18;
+  const gap = 14;
   const boxWidth = (width - 48 - gap * (passes.length - 1)) / passes.length;
 
   passes.forEach((pass, index) => {
     const x = 24 + index * (boxWidth + gap);
     body.push(rect(x, boxTop, boxWidth, boxHeight, 'var(--band)', 8));
-    body.push(rect(x, boxTop, 3, boxHeight, index === 1 ? 'var(--s1)' : 'var(--s3)', 2));
-    body.push(text(x + 16, boxTop + 24, pass.title, { size: 12.5, weight: 650 }));
+    body.push(rect(x, boxTop, 3, boxHeight, index === 1 || index === 4 ? 'var(--s1)' : 'var(--s3)', 2));
+    body.push(text(x + 14, boxTop + 24, pass.title, { size: 12, weight: 650 }));
     pass.detail.split('\n').forEach((detailLine, lineIndex) => {
-      body.push(text(x + 16, boxTop + 46 + lineIndex * 15, detailLine, { size: 10.5, className: 't-dim' }));
+      body.push(text(x + 14, boxTop + 46 + lineIndex * 15, detailLine, { size: 10, className: 't-dim' }));
     });
 
     if (index < passes.length - 1) {

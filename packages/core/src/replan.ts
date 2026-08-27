@@ -1,4 +1,5 @@
 import { scheduleMeals } from './meals.js';
+import { optimiseItinerary } from './optimise.js';
 import {
   buildDays,
   describeRejection,
@@ -247,12 +248,24 @@ export function replan(request: ReplanRequest, options: PlannerOptions = {}): Re
     );
   }
 
+  // Rearranging is safe here: the pass never adds or removes a stop, and it
+  // cannot touch anything with a fixed time -- which is exactly what history and
+  // pins are.
+  const optimisation = options.skipOptimisation ? undefined : optimiseItinerary(days, context);
+
   for (const place of eligible) {
     if (state.placed.has(place.id) || rejected.has(place.id)) continue;
     rejected.set(place.id, describeUnplaced(place, dates, context, days, dropped, closures));
   }
 
-  const next = finalize(revised, context, days, [...rejected.values()], mealOutcome.notesByDay);
+  const next = finalize(
+    revised,
+    context,
+    days,
+    [...rejected.values()],
+    mealOutcome.notesByDay,
+    optimisation,
+  );
   const changes = diff(before, snapshot(next), {
     dropped,
     closures,
