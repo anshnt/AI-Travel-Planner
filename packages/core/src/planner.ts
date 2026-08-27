@@ -1,5 +1,6 @@
 import {
   round2,
+  formatList,
   isExcluded,
   explainScore,
   paceProfile,
@@ -18,7 +19,15 @@ import {
   weekdayOf,
 } from './time.js';
 import { TravelMatrix } from './travel.js';
+import {
+  dayWeatherSeverity,
+  describeWetSpell,
+  rainRiskBetween,
+  weatherFit,
+  wetSpells,
+} from './weather.js';
 import type {
+  DailyWeather,
   DayPlan,
   DayTotals,
   Itinerary,
@@ -41,6 +50,16 @@ import type {
  * behaviour that keeps days geographically coherent without becoming rigid.
  */
 const TRAVEL_PENALTY_PER_HOUR = 0.22;
+
+/**
+ * How much the forecast is allowed to move the plan.
+ *
+ * At 0.4 a soaking-wet slot can outweigh a moderate preference match -- enough
+ * to reliably swap a park for a gallery in the wet hours -- but never enough to
+ * override a strong one. Someone who came to Barcelona for Gaudi still gets
+ * Gaudi in the rain; they just get the indoor half of it first.
+ */
+const WEATHER_WEIGHT = 0.4;
 
 /** Days may run this much over their notional share of the budget before insertions are refused. */
 const DAILY_BUDGET_SLACK = 1.4;
@@ -70,6 +89,8 @@ const MINUTES_IN_DAY = 1440;
 export type PlannerOptions = {
   /** Skip the geographic-coherence penalty; used by tests that assert pure ranking. */
   ignoreTravelPenalty?: boolean;
+  /** Plan weather-blind even when a forecast is supplied. */
+  ignoreWeather?: boolean;
 };
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -137,6 +158,8 @@ type PlanContext = {
   dailyBudget: number;
   /** Trip-specific price scale handed to every scoring call. */
   scoring: ScoreOptions;
+  /** Forecast by ISO date; days with no entry are planned weather-blind. */
+  weatherByDate: Map<string, DailyWeather>;
   options: PlannerOptions;
 };
 
@@ -219,6 +242,20 @@ function dayCost(items: readonly TimedItem[], context: PlanContext): number {
   return round2(visits + travel + (returnLeg(items, context)?.cost ?? 0));
 }
 
+/**
+ * How well a whole day's sequence suits that day's forecast.
+ *
+ * Scored over the sequence rather than per place, because weather fit depends on
+ * *when* a stop happens: moving the gallery earlier changes the park's slot too.
+ * Insertions are judged on the change in this figure, exactly as they are on the
+ * change in travel time.
+ */
+function dayWeatherScore(items: readonly TimedItem[], day: WorkingDay, context: PlanContext): number {
+  const weather = context.weatherByDate.get(day.date);
+  if (!weather) return 0;
+  return items.reduce((sum, entry) => sum + weatherFit(entry.place, weather, entry.start, entry.end).fit, 0);
+}
+
 function travelMinutes(items: readonly TimedItem[], context: PlanContext): number {
   return (
     items.reduce((sum, entry) => sum + entry.arrival.minutes, 0) +
@@ -256,6 +293,7 @@ function bestInsertionForDay(
   const visitCost = partyCost(place, context.preferences.travelers);
   const baseTravel = travelMinutes(day.items, context);
   const baseCost = dayCost(day.items, context);
+  const baseWeather = dayWeatherScore(day.items, day, context);
   const score = scorePlace(place, context.preferences, context.scoring).total;
 
   let best: InsertionCandidate | null = null;
@@ -286,7 +324,10 @@ function bestInsertionForDay(
     const penalty = context.options.ignoreTravelPenalty
       ? 0
       : (addedTravelMinutes / 60) * TRAVEL_PENALTY_PER_HOUR;
-    const gain = score - penalty;
+    const weatherDelta = context.options.ignoreWeather
+      ? 0
+      : (dayWeatherScore(timed, day, context) - baseWeather) * WEATHER_WEIGHT;
+    const gain = score - penalty + weatherDelta;
 
     // Positions are tried in order, so an exact tie resolves to the later slot.
     // That keeps places in the order the planner chose them -- the most wanted
@@ -351,6 +392,7 @@ export function planTrip(request: PlanRequest, options: PlannerOptions = {}): It
         (dailyBudget / preferences.travelers) * EXPENSIVE_SHARE_OF_DAILY_BUDGET,
       ),
     },
+    weatherByDate: new Map((request.weather ?? []).map((entry) => [entry.date, entry])),
     options,
   };
 
@@ -489,6 +531,7 @@ function finalize(
   const travelers = context.preferences.travelers;
 
   const dayPlans: DayPlan[] = days.map((day) => {
+    const weather = weatherByDate.get(day.date);
     const items: ScheduledItem[] = day.items.map((entry) => ({
       placeId: entry.place.id,
       place: entry.place,
@@ -499,6 +542,7 @@ function finalize(
       arrival: entry.arrival,
       reasons:
         entry.reasons.length > 0 ? entry.reasons : explainScore(entry.place, context.preferences, context.scoring),
+      cautions: weatherFit(entry.place, weather, entry.start, entry.end).cautions,
       locked: entry.locked,
     }));
 
@@ -612,9 +656,55 @@ function dayNotes(day: WorkingDay, context: PlanContext): string[] {
     }
   }
 
+  notes.push(...weatherNotes(day, context));
+
   const totalTravel = travelMinutes(day.items, context);
   if (totalTravel > HEAVY_TRAVEL_MINUTES) {
     notes.push(`${formatDuration(totalTravel)} of getting about today; a transit pass would probably pay for itself.`);
+  }
+
+  return notes;
+}
+
+/**
+ * What the forecast did to the day.
+ *
+ * Says whether the plan managed to dodge the weather or merely acknowledges it,
+ * because "rain 13:00 to 16:00, and you are in a museum for it" and "rain 13:00
+ * to 16:00, and you are in a park for it" are very different pieces of news.
+ */
+function weatherNotes(day: WorkingDay, context: PlanContext): string[] {
+  const weather = context.weatherByDate.get(day.date);
+  if (!weather) return [];
+
+  const notes: string[] = [];
+  const spells = wetSpells(weather);
+
+  if (spells.length > 0) {
+    const worst = spells.reduce((best, spell) => (spell.peakRisk > best.peakRisk ? spell : best));
+    const exposed = day.items.filter(
+      (entry) => !entry.place.indoor && rainRiskBetween(weather, entry.start, entry.end) >= 0.4,
+    );
+    const sheltered = day.items.filter(
+      (entry) => entry.place.indoor && rainRiskBetween(weather, entry.start, entry.end) >= 0.4,
+    );
+
+    const window = `Rain likely ${describeWetSpell(worst)} (${Math.round(worst.peakRisk * 100)}%)`;
+    if (exposed.length === 0 && sheltered.length > 0) {
+      notes.push(`${window}: ${formatList(sheltered.map((entry) => entry.place.name))} sits under cover for it.`);
+    } else if (exposed.length > 0) {
+      notes.push(`${window}, and ${formatList(exposed.map((entry) => entry.place.name))} is outdoors. Take a coat.`);
+    } else {
+      notes.push(`${window}, but nothing is scheduled through it.`);
+    }
+  }
+
+  if (dayWeatherSeverity(weather) === 'poor' && spells.length === 0) {
+    if (weather.tempMaxC > 34) {
+      notes.push(`Up to ${Math.round(weather.tempMaxC)}°C today; the indoor stops are deliberately in the afternoon.`);
+    } else if (weather.tempMinC < 1) {
+      notes.push(`Down to ${Math.round(weather.tempMinC)}°C today; the outdoor stops are kept short.`);
+    }
   }
 
   return notes;

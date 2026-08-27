@@ -191,6 +191,11 @@ export type ScheduledItem = {
   arrival?: TravelLeg;
   /** Human-readable justifications, surfaced in the UI so the plan explains itself. */
   reasons: string[];
+  /**
+   * Things worth knowing before setting off, as distinct from reasons this stop
+   * was chosen: an exposed viewpoint in a high wind, a park under a shower.
+   */
+  cautions: string[];
   /** Pinned by the traveller: the planner may reorder around it but never drops it. */
   locked?: boolean;
 };
