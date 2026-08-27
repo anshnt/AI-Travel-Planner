@@ -1,0 +1,29 @@
+{
+  "name": "ai-travel-planner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An agentic, map-first travel planner that schedules a trip around budget, weather, opening hours, travel time, food and personal taste \u2014 and rearranges itself when reality changes.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @atp/core && npm run build --workspace @atp/server && npm run build --workspace @atp/web",
+    "dev": "npm run build --workspace @atp/core && concurrently -n core,api,web -c gray,cyan,magenta \"npm run watch --workspace @atp/core\" \"npm run dev --workspace @atp/server\" \"npm run dev --workspace @atp/web\"",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "npm run typecheck",
+    "clean": "rm -rf packages/*/dist apps/*/dist packages/*/*.tsbuildinfo"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

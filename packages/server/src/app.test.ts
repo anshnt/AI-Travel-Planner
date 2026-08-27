@@ -1,0 +1,237 @@
+import type { Itinerary } from '@atp/core';
+import type { Express } from 'express';
+import { beforeAll, describe, expect, it } from 'vitest';
+
+import { createApp } from './app.js';
+import { DESTINATIONS } from './data/destinations.js';
+
+let app: Express;
+
+/**
+ * Drives the Express app through `fetch` against a real ephemeral listener.
+ * That exercises the same JSON serialisation path a browser client uses, which
+ * is where response bugs actually live.
+ */
+async function call(
+  method: 'GET' | 'POST',
+  path: string,
+  body?: unknown,
+): Promise<{ status: number; json: any }> {
+  const server = app.listen(0);
+  try {
+    const address = server.address();
+    if (address === null || typeof address === 'string') throw new Error('no port assigned');
+    const response = await fetch(`http://127.0.0.1:${address.port}${path}`, {
+      method,
+      ...(body === undefined
+        ? {}
+        : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
+    });
+    return { status: response.status, json: await response.json() };
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
+const basePlan = {
+  destinationId: 'barcelona',
+  startDate: '2026-05-11', // Monday
+  endDate: '2026-05-13',
+  budgetTotal: 500,
+  preferences: {
+    interests: { architecture: 1, 'art-nouveau': 0.9, food: 0.7, views: 0.6 },
+    pace: 'balanced' as const,
+    travelers: 2,
+  },
+};
+
+beforeAll(() => {
+  app = createApp();
+});
+
+describe('GET /api/health', () => {
+  it('reports the destination count and the weather provider in use', async () => {
+    const { status, json } = await call('GET', '/api/health');
+    expect(status).toBe(200);
+    expect(json).toMatchObject({ status: 'ok', destinations: DESTINATIONS.length, weatherProvider: 'synthetic' });
+  });
+});
+
+describe('GET /api/destinations', () => {
+  it('lists destinations without shipping every place', async () => {
+    const { status, json } = await call('GET', '/api/destinations');
+    expect(status).toBe(200);
+    expect(json.destinations.map((d: { id: string }) => d.id)).toEqual(['barcelona', 'kyoto', 'lisbon']);
+    expect(json.destinations[0]).not.toHaveProperty('places');
+    expect(json.destinations[0].interests.length).toBeGreaterThan(3);
+  });
+
+  it('returns one destination in full', async () => {
+    const { status, json } = await call('GET', '/api/destinations/kyoto');
+    expect(status).toBe(200);
+    expect(json.destination.currency).toBe('JPY');
+    expect(json.destination.places.length).toBeGreaterThan(10);
+  });
+
+  it('404s an unknown destination', async () => {
+    const { status, json } = await call('GET', '/api/destinations/atlantis');
+    expect(status).toBe(404);
+    expect(json.error).toMatch(/Unknown destination/);
+  });
+});
+
+describe('GET /api/destinations/:id/forecast', () => {
+  it('returns one entry per day in range', async () => {
+    const { status, json } = await call(
+      'GET',
+      '/api/destinations/lisbon/forecast?startDate=2026-05-11&endDate=2026-05-14',
+    );
+    expect(status).toBe(200);
+    expect(json.forecast.map((d: { date: string }) => d.date)).toEqual([
+      '2026-05-11',
+      '2026-05-12',
+      '2026-05-13',
+      '2026-05-14',
+    ]);
+    expect(json.forecast[0].hourly).toHaveLength(24);
+  });
+
+  it('is deterministic for the same place and date', async () => {
+    const first = await call('GET', '/api/destinations/lisbon/forecast?startDate=2026-05-11&endDate=2026-05-11');
+    const second = await call('GET', '/api/destinations/lisbon/forecast?startDate=2026-05-11&endDate=2026-05-11');
+    expect(second.json.forecast).toEqual(first.json.forecast);
+  });
+
+  it('rejects a missing or backwards range', async () => {
+    expect((await call('GET', '/api/destinations/lisbon/forecast')).status).toBe(400);
+    expect(
+      (await call('GET', '/api/destinations/lisbon/forecast?startDate=2026-05-14&endDate=2026-05-11')).status,
+    ).toBe(400);
+  });
+});
+
+describe('POST /api/plan', () => {
+  it('plans a real trip end to end', async () => {
+    const { status, json } = await call('POST', '/api/plan', basePlan);
+    expect(status).toBe(200);
+
+    const itinerary: Itinerary = json.itinerary;
+    expect(itinerary.days).toHaveLength(3);
+    expect(itinerary.currency).toBe('EUR');
+    expect(itinerary.totals.placesVisited).toBeGreaterThan(4);
+    expect(itinerary.totals.cost).toBeLessThanOrEqual(500);
+
+    // Every scheduled item should carry the data the UI needs to draw it.
+    for (const day of itinerary.days) {
+      expect(day.weather?.date).toBe(day.date);
+      for (const item of day.items) {
+        expect(item.place.coord.lat).toBeTypeOf('number');
+        expect(item.end).toBeGreaterThan(item.start);
+        expect(item.arrival).toBeDefined();
+      }
+    }
+  });
+
+  it('keeps Monday-closed museums off the Monday', async () => {
+    const { json } = await call('POST', '/api/plan', {
+      ...basePlan,
+      preferences: { ...basePlan.preferences, interests: { art: 1, museums: 1 } },
+    });
+    const monday = json.itinerary.days.find((day: { date: string }) => day.date === '2026-05-11');
+    const closedOnMondays = ['bcn-picasso-museum', 'bcn-mnac', 'bcn-miro'];
+    for (const item of monday.items) {
+      expect(closedOnMondays).not.toContain(item.placeId);
+    }
+  });
+
+  it('respects a tight budget', async () => {
+    const { json } = await call('POST', '/api/plan', { ...basePlan, budgetTotal: 60 });
+    expect(json.itinerary.totals.cost).toBeLessThanOrEqual(60);
+    expect(json.itinerary.totals.budgetRemaining).toBeGreaterThanOrEqual(0);
+  });
+
+  it('plans a yen trip without mistaking the price scale', async () => {
+    const { json } = await call('POST', '/api/plan', {
+      destinationId: 'kyoto',
+      startDate: '2026-05-11',
+      endDate: '2026-05-13',
+      budgetTotal: 60_000,
+      preferences: { interests: { temples: 1, gardens: 0.8 }, travelers: 2 },
+    });
+    expect(json.itinerary.currency).toBe('JPY');
+    expect(json.itinerary.totals.placesVisited).toBeGreaterThan(3);
+    expect(json.itinerary.totals.cost).toBeLessThanOrEqual(60_000);
+  });
+
+  it('narrows the pool to the places the traveller kept', async () => {
+    const keep = ['bcn-sagrada-familia', 'bcn-park-guell'];
+    const { json } = await call('POST', '/api/plan', { ...basePlan, includePlaceIds: keep });
+    const scheduled = json.itinerary.days.flatMap((day: { items: { placeId: string }[] }) =>
+      day.items.map((item) => item.placeId),
+    );
+    expect(scheduled.sort()).toEqual([...keep].sort());
+  });
+
+  it('anchors days to the chosen lodging', async () => {
+    const { json } = await call('POST', '/api/plan', { ...basePlan, lodgingPlaceId: 'bcn-gothic-quarter' });
+    const firstDay = json.itinerary.days[0];
+    expect(firstDay.items[0].arrival.fromPlaceId).toBe('bcn-gothic-quarter');
+    expect(firstDay.returnToBase.toPlaceId).toBe('bcn-gothic-quarter');
+  });
+
+  it('applies preference defaults when none are sent', async () => {
+    const { status, json } = await call('POST', '/api/plan', {
+      destinationId: 'lisbon',
+      startDate: '2026-05-11',
+      endDate: '2026-05-12',
+      budgetTotal: 200,
+    });
+    expect(status).toBe(200);
+    expect(json.itinerary.days).toHaveLength(2);
+  });
+
+  it('reports validation problems field by field', async () => {
+    const { status, json } = await call('POST', '/api/plan', {
+      destinationId: 'barcelona',
+      startDate: '11-05-2026',
+      endDate: '2026-05-13',
+      budgetTotal: -5,
+    });
+    expect(status).toBe(400);
+    expect(json.error).toBe('Invalid request');
+    expect(json.issues.map((issue: { path: string }) => issue.path)).toContain('startDate');
+    expect(json.issues.map((issue: { path: string }) => issue.path)).toContain('budgetTotal');
+  });
+
+  it('rejects a backwards date range', async () => {
+    const { status, json } = await call('POST', '/api/plan', {
+      ...basePlan,
+      startDate: '2026-05-13',
+      endDate: '2026-05-11',
+    });
+    expect(status).toBe(400);
+    expect(JSON.stringify(json.issues)).toMatch(/endDate must not precede startDate/);
+  });
+
+  it('rejects an implausibly long trip rather than grinding on it', async () => {
+    const { status } = await call('POST', '/api/plan', {
+      ...basePlan,
+      startDate: '2026-05-01',
+      endDate: '2026-12-01',
+    });
+    expect(status).toBe(400);
+  });
+
+  it('404s an unknown destination and 400s an unknown lodging', async () => {
+    expect((await call('POST', '/api/plan', { ...basePlan, destinationId: 'atlantis' })).status).toBe(404);
+    expect((await call('POST', '/api/plan', { ...basePlan, lodgingPlaceId: 'nowhere' })).status).toBe(400);
+  });
+});
+
+describe('unknown routes', () => {
+  it('404s with JSON rather than HTML', async () => {
+    const { status, json } = await call('GET', '/api/nope');
+    expect(status).toBe(404);
+    expect(json).toEqual({ error: 'Not found' });
+  });
+});
