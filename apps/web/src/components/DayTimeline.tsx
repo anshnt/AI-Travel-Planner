@@ -2,6 +2,9 @@ import type { DayPlan, Itinerary } from '@atp/core';
 
 import {
   CATEGORY_COLORS,
+  MEAL_ICONS,
+  MEAL_LABELS,
+  activityOrdinals,
   MODE_ICONS,
   WEATHER_ICONS,
   WEATHER_LABELS,
@@ -23,6 +26,8 @@ type Props = {
 };
 
 export function DayTimeline({ day, currency, dayWindowHours, selectedPlaceId, onSelectPlace }: Props) {
+  const ordinals = activityOrdinals(day.items);
+
   return (
     <section className="atp-day" aria-label={`Plan for ${formatDayLabel(day.date)}`}>
       <header className="atp-day__header">
@@ -46,9 +51,11 @@ export function DayTimeline({ day, currency, dayWindowHours, selectedPlaceId, on
       ) : (
         <ol className="atp-timeline">
           {day.items.map((item, index) => {
+            const ordinal = ordinals[index];
             const selected = item.placeId === selectedPlaceId;
+            const isMeal = item.kind === 'meal';
             return (
-              <li key={item.placeId}>
+              <li key={`${item.placeId}-${item.start}`}>
                 {item.arrival && item.arrival.minutes > 0 ? (
                   <p className="atp-leg">
                     {MODE_ICONS[item.arrival.mode]} {formatDuration(item.arrival.minutes)}
@@ -58,16 +65,16 @@ export function DayTimeline({ day, currency, dayWindowHours, selectedPlaceId, on
 
                 <button
                   type="button"
-                  className={`atp-stop${selected ? ' atp-stop--selected' : ''}`}
+                  className={`atp-stop${selected ? ' atp-stop--selected' : ''}${isMeal ? ' atp-stop--meal' : ''}`}
                   aria-pressed={selected}
                   onClick={() => onSelectPlace(selected ? null : item.placeId)}
                 >
                   <span
                     className="atp-stop__index"
-                    style={{ background: CATEGORY_COLORS[item.place.category] ?? '#6b7280' }}
+                    style={isMeal ? undefined : { background: CATEGORY_COLORS[item.place.category] ?? '#6b7280' }}
                     aria-hidden="true"
                   >
-                    {index + 1}
+                    {isMeal && item.mealKind ? MEAL_ICONS[item.mealKind] : ordinal}
                   </span>
                   <span className="atp-stop__body">
                     <span className="atp-stop__title">
@@ -77,10 +84,10 @@ export function DayTimeline({ day, currency, dayWindowHours, selectedPlaceId, on
                       </span>
                     </span>
                     <span className="atp-stop__meta">
-                      {categoryLabel(item.place.category)}
+                      {isMeal && item.mealKind ? MEAL_LABELS[item.mealKind] : categoryLabel(item.place.category)}
                       {' · '}
                       {item.cost > 0 ? formatMoney(item.cost, currency) : 'free'}
-                      {item.place.indoor ? ' · indoor' : ' · outdoor'}
+                      {isMeal ? '' : item.place.indoor ? ' · indoor' : ' · outdoor'}
                     </span>
                     {item.cautions.length > 0 ? (
                       <span className="atp-stop__caution">{item.cautions.join(' · ')}</span>
@@ -105,7 +112,12 @@ export function DayTimeline({ day, currency, dayWindowHours, selectedPlaceId, on
       <dl className="atp-day__totals">
         <div>
           <dt>Spend</dt>
-          <dd>{formatMoney(day.totals.cost, currency)}</dd>
+          <dd>
+            {formatMoney(day.totals.cost, currency)}
+            {day.totals.mealCost > 0 ? (
+              <span className="atp-day__split"> incl. {formatMoney(day.totals.mealCost, currency)} food</span>
+            ) : null}
+          </dd>
         </div>
         <div>
           <dt>On the move</dt>
@@ -138,7 +150,9 @@ export function TripSummary({ itinerary, budgetTotal }: { itinerary: Itinerary; 
       <div className="atp-summary__figures">
         <div>
           <span className="atp-summary__value">{itinerary.totals.placesVisited}</span>
-          <span className="atp-summary__label">stops</span>
+          <span className="atp-summary__label">
+            stops{itinerary.totals.mealsBooked > 0 ? ` + ${itinerary.totals.mealsBooked} meals` : ''}
+          </span>
         </div>
         <div>
           <span className="atp-summary__value">{formatMoney(spent, itinerary.currency)}</span>
@@ -149,8 +163,12 @@ export function TripSummary({ itinerary, budgetTotal }: { itinerary: Itinerary; 
           <span className="atp-summary__label">travelling</span>
         </div>
         <div>
-          <span className="atp-summary__value">{formatDuration(itinerary.totals.walkMinutes)}</span>
-          <span className="atp-summary__label">on foot</span>
+          <span className="atp-summary__value">
+            {itinerary.totals.mealCost > 0
+              ? formatMoney(itinerary.totals.mealCost, itinerary.currency)
+              : formatDuration(itinerary.totals.walkMinutes)}
+          </span>
+          <span className="atp-summary__label">{itinerary.totals.mealCost > 0 ? 'on food' : 'on foot'}</span>
         </div>
       </div>
 

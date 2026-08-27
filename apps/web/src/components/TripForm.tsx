@@ -1,4 +1,4 @@
-import type { Pace, TravelMode } from '@atp/core';
+import type { DietaryTag, MealKind, Pace, TravelMode } from '@atp/core';
 
 import type { Destination, DestinationSummary, PlanFormState } from '../api.js';
 import { formatMoney } from '../format.js';
@@ -25,11 +25,31 @@ const MODES: { value: TravelMode; label: string }[] = [
   { value: 'drive', label: 'Drive' },
 ];
 
+const MEALS: { value: MealKind; label: string }[] = [
+  { value: 'breakfast', label: 'Breakfast' },
+  { value: 'lunch', label: 'Lunch' },
+  { value: 'dinner', label: 'Dinner' },
+];
+
+const DIETARY: { value: DietaryTag; label: string }[] = [
+  { value: 'vegetarian', label: 'Vegetarian' },
+  { value: 'vegan', label: 'Vegan' },
+  { value: 'gluten-free', label: 'Gluten free' },
+  { value: 'dairy-free', label: 'Dairy free' },
+  { value: 'halal', label: 'Halal' },
+  { value: 'kosher', label: 'Kosher' },
+];
+
 /** How many interest chips to offer before hiding the long tail. */
 const INTEREST_LIMIT = 18;
 
 export function TripForm({ destinations, destination, form, onChange, onSubmit, planning }: Props) {
   const interests = (destination?.interests ?? []).slice(0, INTEREST_LIMIT);
+
+  // Only offer cuisines the destination actually has somewhere to eat.
+  const cuisineOptions = [
+    ...new Set((destination?.places ?? []).flatMap((place) => place.meal?.cuisines ?? [])),
+  ].sort();
   const nights = Math.max(
     0,
     Math.round(
@@ -217,6 +237,70 @@ export function TripForm({ destinations, destination, form, onChange, onSubmit, 
         </div>
       </fieldset>
 
+      <fieldset className="atp-field">
+        <legend>Meals to book</legend>
+        <div className="atp-chips">
+          {MEALS.map((meal) => {
+            const active = form.meals.includes(meal.value);
+            return (
+              <button
+                key={meal.value}
+                type="button"
+                className={`atp-chip${active ? ' is-active' : ''}`}
+                aria-pressed={active}
+                onClick={() => onChange({ meals: toggle(form.meals, meal.value) })}
+              >
+                {meal.label}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset className="atp-field">
+        <legend>
+          Dietary requirements <span className="atp-hint">these are filters, not preferences</span>
+        </legend>
+        <div className="atp-chips">
+          {DIETARY.map((tag) => {
+            const active = form.dietary.includes(tag.value);
+            return (
+              <button
+                key={tag.value}
+                type="button"
+                className={`atp-chip${active ? ' is-active' : ''}`}
+                aria-pressed={active}
+                onClick={() => onChange({ dietary: toggle(form.dietary, tag.value) })}
+              >
+                {tag.label}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      {cuisineOptions.length > 0 ? (
+        <fieldset className="atp-field">
+          <legend>Food you are after</legend>
+          <div className="atp-chips">
+            {cuisineOptions.map((cuisine) => {
+              const active = form.cuisines.includes(cuisine);
+              return (
+                <button
+                  key={cuisine}
+                  type="button"
+                  className={`atp-chip${active ? ' is-active' : ''}`}
+                  aria-pressed={active}
+                  onClick={() => onChange({ cuisines: toggle(form.cuisines, cuisine) })}
+                >
+                  {cuisine}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      ) : null}
+
       {destination ? (
         <div className="atp-field">
           <label htmlFor="lodging">Base yourself near</label>
@@ -248,6 +332,11 @@ function clampInt(raw: string, min: number, max: number, fallback: number): numb
   const parsed = Number.parseInt(raw, 10);
   if (Number.isNaN(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
+}
+
+/** Adds or removes a value, preserving order. */
+function toggle<T>(values: readonly T[], value: T): T[] {
+  return values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value];
 }
 
 function toggleMode(modes: TravelMode[], mode: TravelMode): TravelMode[] {

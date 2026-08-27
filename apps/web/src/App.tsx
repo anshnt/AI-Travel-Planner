@@ -25,12 +25,16 @@ function initialForm(): PlanFormState {
     travelers: 2,
     pace: 'balanced',
     dayStart: '09:00',
-    dayEnd: '20:00',
+    // Late enough to contain the default 19:30 dinner window.
+    dayEnd: '22:00',
     maxWalkMinutes: 22,
     preferredModes: ['walk', 'transit'],
     interests: {},
     avoidCategories: [],
     mustSeeIds: [],
+    meals: ['lunch', 'dinner'],
+    dietary: [],
+    cuisines: [],
   };
 }
 

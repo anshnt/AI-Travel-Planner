@@ -117,11 +117,16 @@ export type Preferences = {
   maxWalkMinutes: number;
   preferredModes: TravelMode[];
   avoidCategories: PlaceCategory[];
+  /** Requirements, not preferences: a restaurant that cannot meet all of these is not an option. */
   dietary: DietaryTag[];
   cuisines: string[];
   /** Places that must appear in the plan, by id. */
   mustSeeIds: string[];
   travelers: number;
+  /** Which meals the planner should book. Breakfast is often included in lodging, so it is off by default. */
+  meals: MealKind[];
+  /** When the traveller likes to eat. Spain eats later than Sweden; this is where that lives. */
+  mealWindows: Record<MealKind, TimeWindow>;
 };
 
 export type WeatherCondition = 'clear' | 'partly-cloudy' | 'cloudy' | 'rain' | 'heavy-rain' | 'snow' | 'storm' | 'fog';
@@ -153,6 +158,15 @@ export type Budget = {
   currency: string;
   /** Optional soft ceiling per day; derived from `total` when absent. */
   dailyCap?: number;
+  /**
+   * Fraction of the total held back for food, 0-1.
+   *
+   * Without a reserve, sightseeing spends the food money first and the traveller
+   * ends up with a beautiful itinerary and nothing to eat. The reserve applies
+   * only when meals are actually being planned; meals may still spend whatever
+   * sightseeing left over.
+   */
+  foodShare?: number;
 };
 
 export type PlanRequest = {
@@ -183,6 +197,8 @@ export type ScheduledItem = {
   placeId: string;
   place: Place;
   kind: ItemKind;
+  /** Set on meal items, so the UI can label breakfast, lunch and dinner. */
+  mealKind?: MealKind;
   start: MinuteOfDay;
   end: MinuteOfDay;
   /** Cost for the whole party. */
@@ -202,6 +218,8 @@ export type ScheduledItem = {
 
 export type DayTotals = {
   cost: number;
+  /** The food share of `cost`, so the traveller can see where the money went. */
+  mealCost: number;
   travelMinutes: number;
   walkMinutes: number;
   /** Time actually spent at places, excluding travel and gaps. */
@@ -243,7 +261,9 @@ export type Rejection = {
 export type ItineraryTotals = DayTotals & {
   /** Budget left over across the whole trip. */
   budgetRemaining: number;
+  /** Sightseeing stops, meals excluded. */
   placesVisited: number;
+  mealsBooked: number;
 };
 
 export type Itinerary = {

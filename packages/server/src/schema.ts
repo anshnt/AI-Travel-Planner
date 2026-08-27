@@ -24,6 +24,8 @@ const placeCategory = z.enum([
 
 const dietaryTag = z.enum(['vegetarian', 'vegan', 'halal', 'kosher', 'gluten-free', 'dairy-free']);
 
+const mealKind = z.enum(['breakfast', 'lunch', 'dinner']);
+
 const clock = z
   .string()
   .regex(CLOCK, 'expected a HH:MM time')
@@ -33,6 +35,11 @@ const clock = z
   });
 
 const isoDate = z.string().regex(ISO_DATE, 'expected a YYYY-MM-DD date');
+
+/** A window a meal may start in, given as clock strings. */
+const mealWindow = z
+  .object({ start: clock, end: clock })
+  .refine((value) => value.end > value.start, { message: 'the window must end after it starts' });
 
 export const preferencesSchema = z.object({
   /** Tag to appetite, -1 (avoid) through 0 (neutral) to 1 (love). */
@@ -47,6 +54,16 @@ export const preferencesSchema = z.object({
   cuisines: z.array(z.string()).default([]),
   mustSeeIds: z.array(z.string()).default([]),
   travelers: z.number().int().min(1).max(20).default(2),
+  /** Which meals to book. Omit for lunch and dinner; send [] for none. */
+  meals: z.array(mealKind).max(3).optional(),
+  /** Override any subset of the meal windows, e.g. just a later dinner. */
+  mealWindows: z
+    .object({
+      breakfast: mealWindow.optional(),
+      lunch: mealWindow.optional(),
+      dinner: mealWindow.optional(),
+    })
+    .optional(),
 });
 
 export const planRequestSchema = z
@@ -57,6 +74,8 @@ export const planRequestSchema = z
     budgetTotal: z.number().min(0).max(10_000_000),
     /** Optional per-day ceiling; derived from the total when omitted. */
     dailyCap: z.number().min(0).optional(),
+    /** Fraction of the budget held back for food, 0-1. Defaults to a sensible share. */
+    foodShare: z.number().min(0).max(1).optional(),
     preferences: preferencesSchema.optional(),
     /** Restrict the candidate pool, e.g. after the traveller deselects places. */
     includePlaceIds: z.array(z.string()).optional(),

@@ -1,4 +1,11 @@
-import { formatClock, formatDuration, type PlaceCategory, type TravelMode, type WeatherCondition } from '@atp/core';
+import {
+  formatClock,
+  formatDuration,
+  type MealKind,
+  type PlaceCategory,
+  type TravelMode,
+  type WeatherCondition,
+} from '@atp/core';
 
 export { formatClock, formatDuration };
 
@@ -76,6 +83,29 @@ export const CATEGORY_COLORS: Record<PlaceCategory, string> = {
   cafe: '#b5763f',
   lodging: '#6b7280',
 };
+
+export const MEAL_ICONS: Record<MealKind, string> = {
+  breakfast: '\u{2615}',
+  lunch: '\u{1F374}',
+  dinner: '\u{1F37D}\u{FE0F}',
+};
+
+export const MEAL_LABELS: Record<MealKind, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+};
+
+/**
+ * Sequential numbers for the sightseeing stops, with meals skipped.
+ *
+ * Numbering by array position would leave visible gaps -- 1, 2, 3, lunch, 5 --
+ * which reads as a missing stop rather than a meal.
+ */
+export function activityOrdinals(items: readonly { kind: string }[]): (number | null)[] {
+  let next = 0;
+  return items.map((item) => (item.kind === 'meal' ? null : (next += 1)));
+}
 
 export function categoryLabel(category: PlaceCategory): string {
   return category.charAt(0).toUpperCase() + category.slice(1);

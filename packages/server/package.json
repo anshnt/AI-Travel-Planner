@@ -6,11 +6,11 @@
   "type": "module",
   "main": "./dist/index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "npm run build -w @atp/core && tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -b tsconfig.json",
     "typecheck": "tsc -b tsconfig.json",
-    "demo": "tsx scripts/demo.ts"
+    "demo": "npm run build -w @atp/core && tsx scripts/demo.ts"
   },
   "dependencies": {
     "@atp/core": "*",

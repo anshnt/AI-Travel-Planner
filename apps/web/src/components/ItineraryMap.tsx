@@ -3,7 +3,17 @@ import L from 'leaflet';
 import { useEffect, useMemo } from 'react';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 
-import { CATEGORY_COLORS, MODE_ICONS, categoryLabel, formatClock, formatDuration, formatMoney } from '../format.js';
+import {
+  CATEGORY_COLORS,
+  MEAL_ICONS,
+  MEAL_LABELS,
+  MODE_ICONS,
+  activityOrdinals,
+  categoryLabel,
+  formatClock,
+  formatDuration,
+  formatMoney,
+} from '../format.js';
 
 type Props = {
   itinerary: Itinerary;
@@ -20,13 +30,16 @@ type Props = {
  * legible at any zoom, and readable by a screen reader through the marker's
  * alt text.
  */
-function pinIcon(item: ScheduledItem, order: number, selected: boolean): L.DivIcon {
+function pinIcon(item: ScheduledItem, order: number | null, selected: boolean): L.DivIcon {
   const color = CATEGORY_COLORS[item.place.category] ?? '#6b7280';
   const size = selected ? 40 : 32;
+  // Meals get their own glyph rather than a number, so a glance at the map tells
+  // you where the day stops to eat.
+  const label = item.kind === 'meal' && item.mealKind ? MEAL_ICONS[item.mealKind] : String(order ?? '');
   return L.divIcon({
     className: 'atp-pin-wrapper',
     html: `<div class="atp-pin${selected ? ' atp-pin--selected' : ''}" style="--pin-color:${color};--pin-size:${size}px">
-             <span>${order}</span>
+             <span>${label}</span>
            </div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size],
@@ -126,13 +139,18 @@ export function ItineraryMap({ itinerary, activeDay, selectedPlaceId, onSelectPl
         );
       })}
 
-      {routes.flatMap((route) =>
-        route.day.items.map((item, order) => (
+      {routes.flatMap((route) => {
+        const ordinals = activityOrdinals(route.day.items);
+        return route.day.items.map((item, index) => (
           <Marker
-            key={`${route.day.date}-${item.placeId}`}
+            key={`${route.day.date}-${item.placeId}-${item.start}`}
             position={[item.place.coord.lat, item.place.coord.lon]}
-            icon={pinIcon(item, order + 1, item.placeId === selectedPlaceId)}
-            alt={`Stop ${order + 1}: ${item.place.name}`}
+            icon={pinIcon(item, ordinals[index] ?? null, item.placeId === selectedPlaceId)}
+            alt={
+              item.kind === 'meal'
+                ? `${item.mealKind ?? 'Meal'}: ${item.place.name}`
+                : `Stop ${ordinals[index]}: ${item.place.name}`
+            }
             eventHandlers={{
               click: () => onSelectPlace(item.placeId),
               popupclose: () => onSelectPlace(null),
@@ -142,7 +160,10 @@ export function ItineraryMap({ itinerary, activeDay, selectedPlaceId, onSelectPl
               <div className="atp-popup">
                 <strong>{item.place.name}</strong>
                 <div className="atp-popup__meta">
-                  {categoryLabel(item.place.category)} &middot; {formatClock(item.start)}&ndash;{formatClock(item.end)}
+                  {item.kind === 'meal' && item.mealKind
+                    ? MEAL_LABELS[item.mealKind]
+                    : categoryLabel(item.place.category)}{' '}
+                  &middot; {formatClock(item.start)}&ndash;{formatClock(item.end)}
                   {item.cost > 0 ? ` · ${formatMoney(item.cost, itinerary.currency)}` : ' · free'}
                 </div>
                 {item.place.description ? <p className="atp-popup__body">{item.place.description}</p> : null}
@@ -161,8 +182,8 @@ export function ItineraryMap({ itinerary, activeDay, selectedPlaceId, onSelectPl
               </div>
             </Popup>
           </Marker>
-        )),
-      )}
+        ));
+      })}
 
       {anchorMarker(itinerary)}
     </MapContainer>
