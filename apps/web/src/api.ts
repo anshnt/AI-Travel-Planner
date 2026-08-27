@@ -1,4 +1,5 @@
 import type {
+  Change,
   Coord,
   DailyWeather,
   DietaryTag,
@@ -107,32 +108,87 @@ function normalizeItinerary(itinerary: Itinerary): Itinerary {
   };
 }
 
+/** The shape the plan and re-plan endpoints share. */
+function planBody(form: PlanFormState): Record<string, unknown> {
+  return {
+    destinationId: form.destinationId,
+    startDate: form.startDate,
+    endDate: form.endDate,
+    budgetTotal: form.budgetTotal,
+    ...(form.lodgingPlaceId ? { lodgingPlaceId: form.lodgingPlaceId } : {}),
+    preferences: {
+      interests: form.interests,
+      pace: form.pace,
+      dayStart: form.dayStart,
+      dayEnd: form.dayEnd,
+      maxWalkMinutes: form.maxWalkMinutes,
+      preferredModes: form.preferredModes,
+      avoidCategories: form.avoidCategories,
+      mustSeeIds: form.mustSeeIds,
+      travelers: form.travelers,
+      meals: form.meals,
+      dietary: form.dietary,
+      cuisines: form.cuisines,
+    },
+  };
+}
+
 export async function requestPlan(
   form: PlanFormState,
 ): Promise<{ itinerary: Itinerary; weatherProvider: string }> {
   const payload = await request<{ itinerary: Itinerary; weatherProvider: string }>('/api/plan', {
     method: 'POST',
-    body: JSON.stringify({
-      destinationId: form.destinationId,
-      startDate: form.startDate,
-      endDate: form.endDate,
-      budgetTotal: form.budgetTotal,
-      ...(form.lodgingPlaceId ? { lodgingPlaceId: form.lodgingPlaceId } : {}),
-      preferences: {
-        interests: form.interests,
-        pace: form.pace,
-        dayStart: form.dayStart,
-        dayEnd: form.dayEnd,
-        maxWalkMinutes: form.maxWalkMinutes,
-        preferredModes: form.preferredModes,
-        avoidCategories: form.avoidCategories,
-        mustSeeIds: form.mustSeeIds,
-        travelers: form.travelers,
-        meals: form.meals,
-        dietary: form.dietary,
-        cuisines: form.cuisines,
-      },
-    }),
+    body: JSON.stringify(planBody(form)),
   });
   return { ...payload, itinerary: normalizeItinerary(payload.itinerary) };
+}
+
+export type ReplanResponse = {
+  itinerary: Itinerary;
+  changes: Change[];
+  summary: string[];
+  pinned: string[];
+};
+
+/**
+ * Re-plans the trip the client is holding.
+ *
+ * The itinerary travels with the request rather than living in a server session:
+ * that keeps the server stateless, and makes "undo" the client's business rather
+ * than a synchronisation problem.
+ */
+export async function requestReplan(
+  form: PlanFormState,
+  itinerary: Itinerary,
+  disruptions: unknown[],
+  options: { now?: { date: string; minute: string }; pinned?: readonly string[] } = {},
+): Promise<ReplanResponse> {
+  const scheduled = itinerary.days.flatMap((day) =>
+    day.items.map((item) => ({
+      date: day.date,
+      placeId: item.placeId,
+      start: item.start,
+      kind: item.kind,
+      ...(item.mealKind ? { mealKind: item.mealKind } : {}),
+    })),
+  );
+
+  const payload = await request<ReplanResponse>('/api/replan', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...planBody(form),
+      scheduled,
+      disruptions,
+      ...(options.now ? { now: options.now } : {}),
+      pinned: options.pinned ?? [],
+    }),
+  });
+
+  return {
+    ...payload,
+    itinerary: normalizeItinerary(payload.itinerary),
+    changes: payload.changes ?? [],
+    summary: payload.summary ?? [],
+    pinned: payload.pinned ?? [],
+  };
 }

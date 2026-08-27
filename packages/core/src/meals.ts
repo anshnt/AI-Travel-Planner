@@ -203,9 +203,13 @@ export function scheduleMeals(
     for (const mealKind of wanted) {
       const window = context.preferences.mealWindows[mealKind];
       const visitsSoFar = countMealVisits(days);
-      const bookedToday = new Set(
-        day.items.filter((entry) => entry.kind === 'meal').map((entry) => entry.place.id),
-      );
+      const mealsToday = day.items.filter((entry) => entry.kind === 'meal');
+
+      // A day carried over from an earlier plan may already have this meal on it.
+      // Without this check a re-plan books a second lunch beside the first one.
+      if (mealsToday.some((entry) => entry.mealKind === mealKind)) continue;
+
+      const bookedToday = new Set(mealsToday.map((entry) => entry.place.id));
 
       const compatible = eateries.flatMap((place) => {
         const score = scoreMeal(place, mealKind, context.preferences, perPersonBudget);
