@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 520" width="620" height="520" role="img" aria-labelledby="t d">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="900" height="520" role="img" aria-labelledby="t d">
   <title id="t">The planned route for one day, plotted from real coordinates</title>
-  <desc id="d">Sagrada Família then Recinte Modernista de Sant Pau then Quimet &amp; Quimet then Mercat de la Boqueria then Gothic Quarter then Santa Maria del Mar then Bar del Pla</desc>
+  <desc id="d">Mercat de la Boqueria then Santa Maria del Mar then Federal Café then Palau de la Música Catalana then Gothic Quarter then Barceloneta Beach then Quimet &amp; Quimet</desc>
   <style>
   :root {
     --surface: #fcfcfb;
@@ -40,72 +40,72 @@
   .t-num { font-variant-numeric: tabular-nums; }
   .rule { stroke: var(--grid); stroke-width: 1; }
   </style>
-  <rect width="620" height="520" fill="var(--surface)"/>
+  <rect width="900" height="520" fill="var(--surface)"/>
   <text x="24" y="30" font-size="16" font-weight="650">The same day on the ground</text>
-  <text x="24" y="50" font-size="11.5" class="t-dim">2026-05-11 · 1h 52m of travel, 13.5 km covered</text>
-  <path d="M406.15,159.87 L406.15,76 L340,476 L384.37,395.35 L423.89,378.15 L466.65,371.7 L449.71,346.97" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round" opacity="0.7"/>
-  <path d="M449.71,346.97 L359.36,334.06" fill="none" stroke="var(--s1)" stroke-width="1.5" opacity="0.3"/>
-  <circle cx="359.36" cy="334.06" r="7" fill="var(--surface)"/>
-  <circle cx="359.36" cy="334.06" r="5" fill="var(--ink-3)"/>
-  <circle cx="406.15" cy="159.87" r="11" fill="var(--surface)"/>
-  <circle cx="406.15" cy="159.87" r="9" fill="var(--s1)"/>
-  <text x="406.15" y="163.27" font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--surface)">1</text>
-  <circle cx="406.15" cy="76" r="11" fill="var(--surface)"/>
-  <circle cx="406.15" cy="76" r="9" fill="var(--s1)"/>
-  <text x="406.15" y="79.4" font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--surface)">2</text>
-  <circle cx="340" cy="476" r="8" fill="var(--surface)"/>
-  <circle cx="340" cy="476" r="6" fill="var(--s2)"/>
-  <circle cx="384.37" cy="395.35" r="11" fill="var(--surface)"/>
-  <circle cx="384.37" cy="395.35" r="9" fill="var(--s1)"/>
-  <text x="384.37" y="398.75" font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--surface)">3</text>
-  <circle cx="423.89" cy="378.15" r="11" fill="var(--surface)"/>
-  <circle cx="423.89" cy="378.15" r="9" fill="var(--s1)"/>
-  <text x="423.89" y="381.55" font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--surface)">4</text>
-  <circle cx="466.65" cy="371.7" r="11" fill="var(--surface)"/>
-  <circle cx="466.65" cy="371.7" r="9" fill="var(--s1)"/>
-  <text x="466.65" y="375.1" font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--surface)">5</text>
-  <circle cx="449.71" cy="346.97" r="8" fill="var(--surface)"/>
-  <circle cx="449.71" cy="346.97" r="6" fill="var(--s2)"/>
+  <text x="24" y="50" font-size="11.5" class="t-dim">2026-05-12 · 1h 51m of travel, 14.1 km covered</text>
+  <path d="M492.11,255.96 L672.52,204.1 L340,352.61 L555.78,119.24 L578.78,218.25 L860,331.39 L394.83,432.76" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round" opacity="0.7"/>
+  <path d="M394.83,432.76 L437.28,121.6" fill="none" stroke="var(--s1)" stroke-width="1.5" opacity="0.3"/>
+  <circle cx="437.28" cy="121.6" r="7" fill="var(--surface)"/>
+  <circle cx="437.28" cy="121.6" r="5" fill="var(--ink-3)"/>
+  <circle cx="492.11" cy="255.96" r="11" fill="var(--surface)"/>
+  <circle cx="492.11" cy="255.96" r="9" fill="var(--s1)"/>
+  <text x="492.11" y="259.36" font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--surface)">1</text>
+  <circle cx="672.52" cy="204.1" r="11" fill="var(--surface)"/>
+  <circle cx="672.52" cy="204.1" r="9" fill="var(--s1)"/>
+  <text x="672.52" y="207.5" font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--surface)">2</text>
+  <circle cx="340" cy="352.61" r="8" fill="var(--surface)"/>
+  <circle cx="340" cy="352.61" r="6" fill="var(--s2)"/>
+  <circle cx="555.78" cy="119.24" r="11" fill="var(--surface)"/>
+  <circle cx="555.78" cy="119.24" r="9" fill="var(--s1)"/>
+  <text x="555.78" y="122.64" font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--surface)">3</text>
+  <circle cx="578.78" cy="218.25" r="11" fill="var(--surface)"/>
+  <circle cx="578.78" cy="218.25" r="9" fill="var(--s1)"/>
+  <text x="578.78" y="221.65" font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--surface)">4</text>
+  <circle cx="860" cy="331.39" r="11" fill="var(--surface)"/>
+  <circle cx="860" cy="331.39" r="9" fill="var(--s1)"/>
+  <text x="860" y="334.79" font-size="10.5" font-weight="700" text-anchor="middle" style="fill:var(--surface)">5</text>
+  <circle cx="394.83" cy="432.76" r="8" fill="var(--surface)"/>
+  <circle cx="394.83" cy="432.76" r="6" fill="var(--s2)"/>
   <circle cx="30" cy="76.5" r="7.5" fill="var(--s1)"/>
   <text x="30" y="80" font-size="9" font-weight="700" text-anchor="middle" style="fill:var(--surface)">1</text>
-  <text x="46" y="80" font-size="11" font-weight="400">Sagrada Família</text>
-  <text x="270" y="80" font-size="10" text-anchor="end" class="t-faint">09:16</text>
+  <text x="46" y="80" font-size="11" font-weight="400">Mercat de la Boqueria</text>
+  <text x="270" y="80" font-size="10" text-anchor="end" class="t-faint">09:12</text>
   <circle cx="30" cy="102.5" r="7.5" fill="var(--s1)"/>
   <text x="30" y="106" font-size="9" font-weight="700" text-anchor="middle" style="fill:var(--surface)">2</text>
-  <text x="46" y="106" font-size="11" font-weight="400">Recinte Modernista de Sant Pau</text>
-  <text x="270" y="106" font-size="10" text-anchor="end" class="t-faint">11:31</text>
+  <text x="46" y="106" font-size="11" font-weight="400">Santa Maria del Mar</text>
+  <text x="270" y="106" font-size="10" text-anchor="end" class="t-faint">10:43</text>
   <circle cx="30" cy="128.5" r="5" fill="var(--s2)"/>
-  <text x="46" y="132" font-size="11" font-weight="500">Quimet &amp; Quimet</text>
-  <text x="270" y="132" font-size="10" text-anchor="end" class="t-faint">13:27</text>
+  <text x="46" y="132" font-size="11" font-weight="500">Federal Café</text>
+  <text x="270" y="132" font-size="10" text-anchor="end" class="t-faint">12:30</text>
   <circle cx="30" cy="154.5" r="7.5" fill="var(--s1)"/>
   <text x="30" y="158" font-size="9" font-weight="700" text-anchor="middle" style="fill:var(--surface)">3</text>
-  <text x="46" y="158" font-size="11" font-weight="400">Mercat de la Boqueria</text>
-  <text x="270" y="158" font-size="10" text-anchor="end" class="t-faint">14:49</text>
+  <text x="46" y="158" font-size="11" font-weight="400">Palau de la Música Catalana</text>
+  <text x="270" y="158" font-size="10" text-anchor="end" class="t-faint">13:49</text>
   <circle cx="30" cy="180.5" r="7.5" fill="var(--s1)"/>
   <text x="30" y="184" font-size="9" font-weight="700" text-anchor="middle" style="fill:var(--surface)">4</text>
   <text x="46" y="184" font-size="11" font-weight="400">Gothic Quarter</text>
-  <text x="270" y="184" font-size="10" text-anchor="end" class="t-faint">16:12</text>
+  <text x="270" y="184" font-size="10" text-anchor="end" class="t-faint">15:12</text>
   <circle cx="30" cy="206.5" r="7.5" fill="var(--s1)"/>
   <text x="30" y="210" font-size="9" font-weight="700" text-anchor="middle" style="fill:var(--surface)">5</text>
-  <text x="46" y="210" font-size="11" font-weight="400">Santa Maria del Mar</text>
-  <text x="270" y="210" font-size="10" text-anchor="end" class="t-faint">18:05</text>
+  <text x="46" y="210" font-size="11" font-weight="400">Barceloneta Beach</text>
+  <text x="270" y="210" font-size="10" text-anchor="end" class="t-faint">17:11</text>
   <circle cx="30" cy="232.5" r="5" fill="var(--s2)"/>
-  <text x="46" y="236" font-size="11" font-weight="500">Bar del Pla</text>
-  <text x="270" y="236" font-size="10" text-anchor="end" class="t-faint">19:30</text>
+  <text x="46" y="236" font-size="11" font-weight="500">Quimet &amp; Quimet</text>
+  <text x="270" y="236" font-size="10" text-anchor="end" class="t-faint">19:44</text>
   <circle cx="30" cy="258.5" r="5" fill="var(--ink-3)"/>
   <text x="46" y="262" font-size="11" class="t-dim">back to base</text>
-  <text x="26" y="314" font-size="15" font-weight="650" class="t-num">EUR 208.8</text>
+  <text x="26" y="314" font-size="15" font-weight="650" class="t-num">EUR 150</text>
   <text x="26" y="329" font-size="10" class="t-faint">Spend</text>
-  <text x="164" y="314" font-size="15" font-weight="650" class="t-num">EUR 104</text>
+  <text x="164" y="314" font-size="15" font-weight="650" class="t-num">EUR 76</text>
   <text x="164" y="329" font-size="10" class="t-faint">On food</text>
-  <text x="26" y="356" font-size="15" font-weight="650" class="t-num">1h 52m</text>
+  <text x="26" y="356" font-size="15" font-weight="650" class="t-num">1h 51m</text>
   <text x="26" y="371" font-size="10" class="t-faint">On the move</text>
-  <text x="164" y="356" font-size="15" font-weight="650" class="t-num">8h 20m</text>
+  <text x="164" y="356" font-size="15" font-weight="650" class="t-num">7h 55m</text>
   <text x="164" y="371" font-size="10" class="t-faint">At places</text>
-  <line x1="355.03" y1="460" x2="451.62" y2="460" stroke="var(--ink-3)" stroke-width="1.5"/>
-  <line x1="355.03" y1="457" x2="355.03" y2="463" stroke="var(--ink-3)" stroke-width="1.5"/>
-  <line x1="451.62" y1="457" x2="451.62" y2="463" stroke="var(--ink-3)" stroke-width="1.5"/>
-  <text x="403.32" y="476" font-size="10" text-anchor="middle" class="t-faint">1 km</text>
+  <line x1="547.06" y1="460" x2="652.94" y2="460" stroke="var(--ink-3)" stroke-width="1.5"/>
+  <line x1="547.06" y1="457" x2="547.06" y2="463" stroke="var(--ink-3)" stroke-width="1.5"/>
+  <line x1="652.94" y1="457" x2="652.94" y2="463" stroke="var(--ink-3)" stroke-width="1.5"/>
+  <text x="600" y="476" font-size="10" text-anchor="middle" class="t-faint">0.5 km</text>
   <rect x="24" y="497.18" width="9" height="9" rx="2" fill="var(--s1)"/>
   <text x="38" y="504" font-size="11" class="t-dim">sightseeing stop, in order</text>
   <rect x="220.16" y="497.18" width="9" height="9" rx="2" fill="var(--s2)"/>

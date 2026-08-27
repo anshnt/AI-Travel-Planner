@@ -10,6 +10,10 @@ import { createApp } from '../src/app.js';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+// Deterministic by default, so the printed trip is reproducible and the script
+// works offline. Set WEATHER_PROVIDER=open-meteo to run it against a live forecast.
+process.env.WEATHER_PROVIDER ??= 'synthetic';
+
 const app = createApp();
 const server = app.listen(0);
 const address = server.address();

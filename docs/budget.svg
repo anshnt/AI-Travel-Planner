@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 190" width="900" height="190" role="img" aria-labelledby="t d">
   <title id="t">Budget breakdown for a planned trip</title>
-  <desc id="d">Tickets: EUR 410. Food: EUR 386. Transport: EUR 70.4. Unspent: EUR 33.6</desc>
+  <desc id="d">Tickets: EUR 386. Food: EUR 330. Transport: EUR 66. Unspent: EUR 118</desc>
   <style>
   :root {
     --surface: #fcfcfb;
@@ -42,22 +42,24 @@
   </style>
   <rect width="900" height="190" fill="var(--surface)"/>
   <text x="24" y="30" font-size="16" font-weight="650">Where the money went</text>
-  <text x="24" y="50" font-size="11.5" class="t-dim">4 days in Barcelona for 2 · EUR 866.4 of a EUR 900 budget · 18 stops and 7 meals</text>
+  <text x="24" y="50" font-size="11.5" class="t-dim">4 days in Barcelona for 2 · EUR 782 of a EUR 900 budget · 17 stops and 6 meals</text>
   <text x="24" y="74" font-size="11" class="t-faint">The budget is a ceiling, not a target: the trip total is checked on every insertion, fares and the journey home included.</text>
-  <rect x="24" y="96" width="386.13" height="34" rx="4" fill="var(--s1)"/>
-  <text x="218.07" y="117" font-size="11" font-weight="600" text-anchor="middle" style="fill:var(--surface)">EUR 410</text>
-  <rect x="412.13" y="96" width="363.41" height="34" rx="4" fill="var(--s2)"/>
-  <text x="594.84" y="117" font-size="11" font-weight="600" text-anchor="middle" style="fill:var(--surface)">EUR 386</text>
-  <rect x="777.55" y="96" width="64.65" height="34" rx="4" fill="var(--s3)"/>
-  <rect x="844.19" y="96" width="29.81" height="34" rx="4" fill="var(--band)"/>
+  <rect x="24" y="96" width="363.41" height="34" rx="4" fill="var(--s1)"/>
+  <text x="206.71" y="117" font-size="11" font-weight="600" text-anchor="middle" style="fill:var(--surface)">EUR 386</text>
+  <rect x="389.41" y="96" width="310.4" height="34" rx="4" fill="var(--s2)"/>
+  <text x="545.61" y="117" font-size="11" font-weight="600" text-anchor="middle" style="fill:var(--surface)">EUR 330</text>
+  <rect x="701.81" y="96" width="60.48" height="34" rx="4" fill="var(--s3)"/>
+  <text x="733.05" y="117" font-size="11" font-weight="600" text-anchor="middle" style="fill:var(--surface)">EUR 66</text>
+  <rect x="764.29" y="96" width="109.71" height="34" rx="4" fill="var(--band)"/>
+  <text x="820.15" y="117" font-size="11" font-weight="600" text-anchor="middle" style="fill:var(--ink-2)">EUR 118</text>
   <rect x="24" y="153.18" width="9" height="9" rx="2" fill="var(--s1)"/>
-  <text x="38" y="160" font-size="11" class="t-dim">Tickets · EUR 410</text>
+  <text x="38" y="160" font-size="11" class="t-dim">Tickets · EUR 386</text>
   <rect x="164.72" y="153.18" width="9" height="9" rx="2" fill="var(--s2)"/>
-  <text x="178.72" y="160" font-size="11" class="t-dim">Food · EUR 386</text>
+  <text x="178.72" y="160" font-size="11" class="t-dim">Food · EUR 330</text>
   <rect x="286.96" y="153.18" width="9" height="9" rx="2" fill="var(--s3)"/>
-  <text x="300.96" y="160" font-size="11" class="t-dim">Transport · EUR 70.4</text>
-  <rect x="446.16" y="153.18" width="9" height="9" rx="2" fill="var(--band)"/>
-  <text x="460.16" y="160" font-size="11" class="t-dim">Unspent · EUR 33.6</text>
+  <text x="300.96" y="160" font-size="11" class="t-dim">Transport · EUR 66</text>
+  <rect x="433.84" y="153.18" width="9" height="9" rx="2" fill="var(--band)"/>
+  <text x="447.84" y="160" font-size="11" class="t-dim">Unspent · EUR 118</text>
   <line x1="24" y1="88" x2="876" y2="88" class="rule"/>
   <text x="876" y="82" font-size="10" text-anchor="end" class="t-faint">ceiling EUR 900</text>
 </svg>

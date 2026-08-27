@@ -714,6 +714,12 @@ function shedForBudget(
  * "Fit this in" and "put this on Thursday" are instructions. If the day is
  * already full, the right answer is to give up its least wanted stop -- not to
  * shrug and report that there was no space.
+ *
+ * What it places is locked. Without that, the later passes of the same re-plan
+ * can undo the instruction that caused them: meal scheduling is allowed to
+ * displace the least valuable stop of a day, and a stop that has just been moved
+ * there is often exactly that -- so the traveller asks for a stop on Wednesday,
+ * is told it moved to Wednesday, and finds a restaurant in its place.
  */
 function insertMakingRoom(
   place: Place,
@@ -724,7 +730,7 @@ function insertMakingRoom(
   budget: number,
   released: Set<string>,
 ): boolean {
-  const spec = sightSpec(place, context);
+  const spec = { ...sightSpec(place, context), locked: true };
 
   const direct =
     candidateDays.length === 1

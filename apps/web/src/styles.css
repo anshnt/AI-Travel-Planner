@@ -692,6 +692,19 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* A trip planned for next summer is outside every forecast horizon there is.
+   Those days are modelled, and the strip says so rather than letting an estimate
+   pass for a forecast. */
+.atp-weather__source {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  cursor: help;
+}
+
 .atp-weather__bars {
   display: flex;
   align-items: flex-end;

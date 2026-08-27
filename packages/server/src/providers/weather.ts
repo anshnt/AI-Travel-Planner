@@ -2,7 +2,14 @@ import type { Coord, DailyWeather, HourlyWeather, WeatherCondition } from '@atp/
 
 export interface WeatherProvider {
   readonly name: string;
-  /** One entry per requested date, in the same order. */
+  /**
+   * Weather for the requested dates, in request order.
+   *
+   * A provider may return *fewer* entries than it was asked for. That is not an
+   * error: a real forecast covers a bounded window, and a provider that padded
+   * the gap with invented numbers would be worse than one that admits it does
+   * not know.
+   */
   forecast(coord: Coord, dates: readonly string[]): Promise<DailyWeather[]>;
 }
 
@@ -13,7 +20,27 @@ function hash(input: string): number {
     value ^= input.charCodeAt(index);
     value = Math.imul(value, 0x01000193) >>> 0;
   }
-  return value;
+  return mix(value);
+}
+
+/**
+ * Final avalanche, and not optional.
+ *
+ * FNV-1a barely moves when only the last byte of the key changes -- the last
+ * multiply is all the mixing that byte gets -- and the date is the tail of every
+ * key here. Without this step consecutive days came back within a tenth of a
+ * degree of each other and a wet Tuesday made the whole week wet, which is not
+ * day-to-day variation at all. This is murmur3's finalizer; it costs four
+ * operations and makes one date's weather independent of the next.
+ */
+function mix(value: number): number {
+  let result = value;
+  result ^= result >>> 16;
+  result = Math.imul(result, 0x85ebca6b) >>> 0;
+  result ^= result >>> 13;
+  result = Math.imul(result, 0xc2b2ae35) >>> 0;
+  result ^= result >>> 16;
+  return result >>> 0;
 }
 
 /** Deterministic pseudo-random in [0, 1) derived from a string key. */
@@ -74,6 +101,7 @@ export class SyntheticWeatherProvider implements WeatherProvider {
 
     return {
       date,
+      source: 'climate-model',
       condition: conditionFor(precipitationChance, precipitationMm, tempMaxC),
       tempMinC,
       tempMaxC,
@@ -112,6 +140,45 @@ export class SyntheticWeatherProvider implements WeatherProvider {
         precipitationMm: wet && wetLength > 0 ? round1(precipitationMm / wetLength) : 0,
       };
     });
+  }
+}
+
+/**
+ * A live provider with the climate model behind it.
+ *
+ * Two jobs. It fills the days a real forecast does not reach -- a trip next
+ * summer is outside every forecast horizon there is -- and it keeps the planner
+ * working when the network does not. Either way the filled days are labelled
+ * `climate-model`, so nothing downstream can mistake an estimate for a forecast.
+ */
+export class FallbackWeatherProvider implements WeatherProvider {
+  readonly name: string;
+
+  constructor(
+    private readonly live: WeatherProvider,
+    private readonly climate: WeatherProvider = new SyntheticWeatherProvider(),
+    private readonly onFailure: (error: unknown) => void = () => {},
+  ) {
+    this.name = `${live.name}+${climate.name}`;
+  }
+
+  async forecast(coord: Coord, dates: readonly string[]): Promise<DailyWeather[]> {
+    let real: DailyWeather[] = [];
+    try {
+      real = await this.live.forecast(coord, dates);
+    } catch (error) {
+      // A missing forecast degrades the plan; it must never fail it.
+      this.onFailure(error);
+    }
+
+    const byDate = new Map(real.map((entry) => [entry.date, entry]));
+    const missing = dates.filter((date) => !byDate.has(date));
+    if (missing.length === 0) return dates.flatMap((date) => (byDate.has(date) ? [byDate.get(date)!] : []));
+
+    const estimated = await this.climate.forecast(coord, missing);
+    for (const entry of estimated) byDate.set(entry.date, { ...entry, source: 'climate-model' });
+
+    return dates.flatMap((date) => (byDate.has(date) ? [byDate.get(date)!] : []));
   }
 }
 

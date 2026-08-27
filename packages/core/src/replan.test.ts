@@ -520,6 +520,53 @@ describe('replan: the traveller edits the plan', () => {
     expect(whereIs(result.itinerary, target)?.date).toBe('2026-03-18');
     expect(result.pinned).toContain(target);
   });
+
+  it('locks what an instruction places, so the rest of the re-plan cannot undo it', () => {
+    // Meal scheduling is allowed to displace the least valuable stop of a day, and
+    // a stop that has just been moved there is often exactly that. Locking it is
+    // what stops the traveller being told a stop moved to Wednesday and finding a
+    // restaurant in its place.
+    const base = request({ candidates: fourStops() });
+    const before = planTrip(base);
+    const moved = before.days[0]!.items[0]!.placeId;
+
+    const result = replan({
+      itinerary: before,
+      base,
+      disruptions: [{ kind: 'move', placeId: moved, toDate: '2026-03-18' }],
+    });
+
+    const landed = result.itinerary.days.flatMap((day) => day.items).find((item) => item.placeId === moved);
+    expect(landed?.locked).toBe(true);
+  });
+
+  it('locks a stop it was told to fit in', () => {
+    // Six candidates and one relaxed day, which holds three: three get left out.
+    const candidates = [0, 1, 2, 3, 4, 5].map((index) =>
+      place({ id: `s${index}`, coord: eastOf(index * 400), dwellMinutes: 90, rating: 4.8 - index * 0.3 }),
+    );
+    const base = request({
+      startDate: '2026-03-16',
+      endDate: '2026-03-16',
+      candidates,
+      preferences: { pace: 'relaxed' },
+    });
+    const before = planTrip(base);
+    const scheduled = new Set(before.days.flatMap((day) => day.items.map((item) => item.placeId)));
+    const leftOut = candidates.find((candidate) => !scheduled.has(candidate.id));
+    expect(leftOut).toBeDefined();
+
+    const result = replan({
+      itinerary: before,
+      base,
+      disruptions: [{ kind: 'add', placeId: leftOut!.id }],
+    });
+
+    const landed = result.itinerary.days
+      .flatMap((day) => day.items)
+      .find((item) => item.placeId === leftOut!.id);
+    expect(landed?.locked).toBe(true);
+  });
 });
 
 describe('replan: the forecast changes', () => {
