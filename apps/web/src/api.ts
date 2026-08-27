@@ -72,8 +72,32 @@ export function fetchForecast(
   return request(`/api/destinations/${encodeURIComponent(id)}/forecast?${query}`);
 }
 
-export function requestPlan(form: PlanFormState): Promise<{ itinerary: Itinerary; weatherProvider: string }> {
-  return request('/api/plan', {
+/**
+ * The API is deployed separately from this app, so its response is treated as
+ * untrusted in shape as well as in content. Only the presentational string
+ * arrays are patched up: a UI that white-screens because an older API did not
+ * send `cautions` is a worse outcome than one missing a caution line.
+ */
+function normalizeItinerary(itinerary: Itinerary): Itinerary {
+  return {
+    ...itinerary,
+    days: itinerary.days.map((day) => ({
+      ...day,
+      notes: day.notes ?? [],
+      items: day.items.map((item) => ({
+        ...item,
+        reasons: item.reasons ?? [],
+        cautions: item.cautions ?? [],
+      })),
+    })),
+    rejected: itinerary.rejected ?? [],
+  };
+}
+
+export async function requestPlan(
+  form: PlanFormState,
+): Promise<{ itinerary: Itinerary; weatherProvider: string }> {
+  const payload = await request<{ itinerary: Itinerary; weatherProvider: string }>('/api/plan', {
     method: 'POST',
     body: JSON.stringify({
       destinationId: form.destinationId,
@@ -94,4 +118,5 @@ export function requestPlan(form: PlanFormState): Promise<{ itinerary: Itinerary
       },
     }),
   });
+  return { ...payload, itinerary: normalizeItinerary(payload.itinerary) };
 }

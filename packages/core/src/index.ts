@@ -3,4 +3,5 @@ export * from './time.js';
 export * from './geo.js';
 export * from './travel.js';
 export * from './scoring.js';
+export * from './weather.js';
 export * from './planner.js';

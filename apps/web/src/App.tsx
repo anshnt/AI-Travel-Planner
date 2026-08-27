@@ -119,6 +119,17 @@ export function App() {
     }
   }, [form]);
 
+  // The weather strip only shows hours the traveller intends to be out in.
+  const dayWindowHours = useMemo<[number, number]>(() => {
+    const parse = (clock: string, fallback: number) => {
+      const hour = Number.parseInt(clock.slice(0, 2), 10);
+      return Number.isNaN(hour) ? fallback : hour;
+    };
+    const from = parse(form.dayStart, 9);
+    const to = Math.max(from + 1, parse(form.dayEnd, 20));
+    return [from, Math.min(23, to - 1)];
+  }, [form.dayStart, form.dayEnd]);
+
   const dayTabs = useMemo(
     () =>
       (itinerary?.days ?? []).map((day, index) => ({
@@ -163,6 +174,7 @@ export function App() {
                 key={day.date}
                 day={day}
                 currency={itinerary.currency}
+                dayWindowHours={dayWindowHours}
                 selectedPlaceId={selectedPlaceId}
                 onSelectPlace={(placeId) => {
                   setSelectedPlaceId(placeId);

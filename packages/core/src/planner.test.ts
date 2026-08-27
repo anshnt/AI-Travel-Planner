@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_PREFERENCES, normalizePreferences, partyCost, planTrip } from './planner.js';
 import { formatClock, window } from './time.js';
-import type { Itinerary, OpeningHours, Place, PlanRequest, Preferences } from './types.js';
+import type { DailyWeather, HourlyWeather, Itinerary, OpeningHours, Place, PlanRequest, Preferences } from './types.js';
 
 /** Central Barcelona-ish coordinates, close enough together to be walkable. */
 const CENTRE = { lat: 41.3874, lon: 2.1686 };
@@ -43,6 +43,31 @@ function request(overrides: Partial<PlanRequest> = {}): PlanRequest {
     candidates: [],
     ...overrides,
     preferences,
+  };
+}
+
+/** Hourly forecast with the named hours wet and the rest dry. */
+function hourlyRain(wetHours: readonly number[], risk = 0.85): HourlyWeather[] {
+  return Array.from({ length: 24 }, (_, hour) => ({
+    hour,
+    tempC: 19,
+    precipitationChance: wetHours.includes(hour) ? risk : 0.05,
+    precipitationMm: wetHours.includes(hour) ? 3 : 0,
+  }));
+}
+
+function forecast(date: string, wetHours: readonly number[], overrides: Partial<DailyWeather> = {}): DailyWeather {
+  const wet = wetHours.length > 0;
+  return {
+    date,
+    condition: wet ? 'rain' : 'clear',
+    tempMinC: 15,
+    tempMaxC: 23,
+    precipitationChance: wet ? 0.85 : 0.05,
+    precipitationMm: wet ? 6 : 0,
+    windKph: 10,
+    hourly: hourlyRain(wetHours),
+    ...overrides,
   };
 }
 
@@ -517,6 +542,143 @@ describe('planTrip: the budget is a hard ceiling', () => {
     const home = day.returnToBase!.cost;
     expect(home).toBeGreaterThan(0);
     expect(day.totals.cost).toBeCloseTo(outbound + home, 2);
+  });
+});
+
+describe('planTrip: weather', () => {
+  const park = () => place({ id: 'park', category: 'park', indoor: false, dwellMinutes: 90, tags: ['parks'] });
+  const gallery = () =>
+    place({
+      id: 'gallery',
+      category: 'gallery',
+      coord: eastOf(400),
+      indoor: true,
+      dwellMinutes: 90,
+      tags: ['art'],
+    });
+
+  const oneDay = (weather: DailyWeather[] | undefined) =>
+    planTrip(
+      request({
+        startDate: '2026-03-16',
+        endDate: '2026-03-16',
+        candidates: [park(), gallery()],
+        ...(weather ? { weather } : {}),
+        preferences: {
+          interests: { parks: 0.8, art: 0.8 },
+          dayStart: 9 * 60,
+          dayEnd: 18 * 60,
+          pace: 'balanced',
+        },
+      }),
+    );
+
+  it('puts the indoor stop in the wet hours and the outdoor one in the dry hours', () => {
+    // Dry morning, wet afternoon: park first, gallery second.
+    const wetAfternoon = oneDay([forecast('2026-03-16', [13, 14, 15, 16, 17])]);
+    expect(idsOnDay(wetAfternoon, 0)).toEqual(['park', 'gallery']);
+  });
+
+  it('reverses that order when the rain comes in the morning instead', () => {
+    const wetMorning = oneDay([forecast('2026-03-16', [9, 10, 11, 12])]);
+    expect(idsOnDay(wetMorning, 0)).toEqual(['gallery', 'park']);
+  });
+
+  it('leaves the order to geography and hours when the day is dry throughout', () => {
+    const dry = oneDay([forecast('2026-03-16', [])]);
+    const blind = oneDay(undefined);
+    expect(idsOnDay(dry, 0)).toEqual(idsOnDay(blind, 0));
+  });
+
+  it('honours ignoreWeather even when a forecast is supplied', () => {
+    const base = request({
+      startDate: '2026-03-16',
+      endDate: '2026-03-16',
+      candidates: [park(), gallery()],
+      weather: [forecast('2026-03-16', [9, 10, 11, 12])],
+      preferences: { interests: { parks: 0.8, art: 0.8 }, dayStart: 9 * 60, dayEnd: 18 * 60 },
+    });
+    expect(idsOnDay(planTrip(base, { ignoreWeather: true }), 0)).toEqual(
+      idsOnDay(planTrip({ ...base, weather: [] }), 0),
+    );
+  });
+
+  it('moves an outdoor stop to the drier of two days', () => {
+    // Monday is a washout; Tuesday is clear. The park should land on Tuesday.
+    const itinerary = planTrip(
+      request({
+        startDate: '2026-03-16',
+        endDate: '2026-03-17',
+        candidates: [park()],
+        weather: [
+          forecast('2026-03-16', [9, 10, 11, 12, 13, 14, 15, 16, 17]),
+          forecast('2026-03-17', []),
+        ],
+        preferences: { interests: { parks: 0.9 }, dayStart: 9 * 60, dayEnd: 18 * 60 },
+      }),
+    );
+    expect(idsOnDay(itinerary, 1)).toEqual(['park']);
+    expect(idsOnDay(itinerary, 0)).toEqual([]);
+  });
+
+  it('does not abandon a strongly wanted outdoor stop just because it rains', () => {
+    const itinerary = planTrip(
+      request({
+        startDate: '2026-03-16',
+        endDate: '2026-03-16',
+        candidates: [park()],
+        weather: [forecast('2026-03-16', [9, 10, 11, 12, 13, 14, 15, 16, 17])],
+        preferences: { interests: { parks: 1 }, dayStart: 9 * 60, dayEnd: 18 * 60 },
+      }),
+    );
+    expect(idsOnDay(itinerary, 0)).toEqual(['park']);
+  });
+
+  it('attaches a caution to a stop scheduled through rain, and none when dry', () => {
+    const wet = oneDay([forecast('2026-03-16', [9, 10, 11, 12, 13, 14, 15, 16, 17])]);
+    const parkItem = wet.days[0]!.items.find((item) => item.placeId === 'park');
+    expect(parkItem?.cautions.join(' ')).toMatch(/outdoors with a 85% chance of rain/);
+
+    const dry = oneDay([forecast('2026-03-16', [])]);
+    expect(dry.days[0]!.items.every((item) => item.cautions.length === 0)).toBe(true);
+  });
+
+  it('says in the day notes whether the plan dodged the rain or ran into it', () => {
+    const dodged = planTrip(
+      request({
+        startDate: '2026-03-16',
+        endDate: '2026-03-16',
+        candidates: [gallery()],
+        weather: [forecast('2026-03-16', [13, 14, 15])],
+        preferences: { interests: { art: 1 }, dayStart: 12 * 60, dayEnd: 18 * 60 },
+      }),
+    );
+    expect(dodged.days[0]?.notes.join(' ')).toMatch(/Rain likely 13:00 to 16:00 \(85%\): gallery sits under cover/);
+
+    const caught = planTrip(
+      request({
+        startDate: '2026-03-16',
+        endDate: '2026-03-16',
+        candidates: [park()],
+        weather: [forecast('2026-03-16', [9, 10, 11, 12, 13, 14, 15, 16, 17])],
+        preferences: { interests: { parks: 1 }, dayStart: 9 * 60, dayEnd: 18 * 60 },
+      }),
+    );
+    expect(caught.days[0]?.notes.join(' ')).toMatch(/park is outdoors. Take a coat/);
+  });
+
+  it('still plans normally for days the forecast does not cover', () => {
+    const itinerary = planTrip(
+      request({
+        startDate: '2026-03-16',
+        endDate: '2026-03-17',
+        candidates: [park(), gallery()],
+        weather: [forecast('2026-03-16', [9, 10, 11])],
+        preferences: { interests: { parks: 0.8, art: 0.8 } },
+      }),
+    );
+    expect(scheduledIds(itinerary).sort()).toEqual(['gallery', 'park']);
+    expect(itinerary.days[1]?.weather).toBeUndefined();
   });
 });
 

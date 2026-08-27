@@ -11,15 +11,18 @@ import {
   formatDuration,
   formatMoney,
 } from '../format.js';
+import { WeatherStrip } from './WeatherStrip.js';
 
 type Props = {
   day: DayPlan;
   currency: string;
+  /** The traveller's day window in hours, used to frame the weather strip. */
+  dayWindowHours: [number, number];
   selectedPlaceId: string | null;
   onSelectPlace: (placeId: string | null) => void;
 };
 
-export function DayTimeline({ day, currency, selectedPlaceId, onSelectPlace }: Props) {
+export function DayTimeline({ day, currency, dayWindowHours, selectedPlaceId, onSelectPlace }: Props) {
   return (
     <section className="atp-day" aria-label={`Plan for ${formatDayLabel(day.date)}`}>
       <header className="atp-day__header">
@@ -33,6 +36,10 @@ export function DayTimeline({ day, currency, selectedPlaceId, onSelectPlace }: P
           </span>
         ) : null}
       </header>
+
+      {day.weather ? (
+        <WeatherStrip weather={day.weather} fromHour={dayWindowHours[0]} toHour={dayWindowHours[1]} />
+      ) : null}
 
       {day.items.length === 0 ? (
         <p className="atp-empty">Nothing fitted this day.</p>
@@ -75,6 +82,9 @@ export function DayTimeline({ day, currency, selectedPlaceId, onSelectPlace }: P
                       {item.cost > 0 ? formatMoney(item.cost, currency) : 'free'}
                       {item.place.indoor ? ' · indoor' : ' · outdoor'}
                     </span>
+                    {item.cautions.length > 0 ? (
+                      <span className="atp-stop__caution">{item.cautions.join(' · ')}</span>
+                    ) : null}
                     {selected && item.reasons.length > 0 ? (
                       <span className="atp-stop__reasons">{item.reasons.join(' · ')}</span>
                     ) : null}

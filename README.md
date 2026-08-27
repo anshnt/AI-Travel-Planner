@@ -23,6 +23,11 @@ That last line is the point. The plan knows the church shuts over the afternoon,
 so it put the free outdoor wander in the gap instead of sending you to a locked
 door.
 
+Give the same trip a wet morning and a dry afternoon and the order flips: the
+gallery goes first and the park waits for the sun. Give it a dry morning and a
+wet afternoon and it flips back. Nothing about the day is fixed except the facts
+it has to work around.
+
 ## What the planner reasons about
 
 | Concern | How it is handled |
@@ -31,7 +36,7 @@ door.
 | **Travel time** | Door-to-door estimates per mode, including the fixed overhead of using it, so a two-stop transit hop correctly loses to a walk. The journey home is costed too. |
 | **Budget** | A hard ceiling, not a suggestion: tickets are charged per traveller, fares per party or per person as appropriate, and the trip total is checked on every insertion. |
 | **User preferences** | Interest tags weighted from −1 to +1, pace, the hours you actually want to be out, how far you will walk, which modes you will use, must-sees and categories to skip. |
-| **Weather** | A forecast is attached to every day and surfaced in the UI. Acting on it — moving indoor stops into the wet hours — is the next piece of work. |
+| **Weather** | Scored per *slot*, not per day: the planner puts the gallery in the wet hours and the park in the dry ones, moves outdoor stops to the drier of two days, and accounts for heat, cold, wind on exposed sites, and a beach too cold to be worth the trip. |
 | **Restaurants** | Present in the dataset with cuisines, dietary tags and price levels, and deliberately excluded from the sightseeing pool. Meal scheduling is the next piece of work. |
 
 ## Why it is built the way it is
