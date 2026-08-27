@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "npm run typecheck",
-    "clean": "rm -rf packages/*/dist apps/*/dist packages/*/*.tsbuildinfo"
+    "clean": "rm -rf packages/*/dist apps/*/dist packages/*/*.tsbuildinfo",
+    "diagrams": "npm run diagrams -w @atp/server"
   },
   "devDependencies": {
     "concurrently": "^10.0.5",

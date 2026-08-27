@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 354" width="900" height="354" role="img" aria-labelledby="t d">
+  <title id="t">The same two candidates, reordered by the forecast</title>
+  <desc id="d">Dry morning, wet afternoon: Parc de la Ciutadella, then Museu Picasso. Wet morning, dry afternoon: Museu Picasso, then Parc de la Ciutadella</desc>
+  <style>
+  :root {
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-3: #8a887f;
+    --grid: #e6e5e0;
+    --band: #eceae4;
+    --s1: #2a78d6;
+    --s2: #eb6834;
+    --s3: #1baf7a;
+    --ramp-1: #dbe8f8;
+    --ramp-2: #a9c8ee;
+    --ramp-3: #6ba1e0;
+    --ramp-4: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #8a887f;
+    --grid: #2e2e2b;
+    --band: #262623;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --ramp-1: #1e2a38;
+    --ramp-2: #26456b;
+    --ramp-3: #2c639f;
+    --ramp-4: #3987e5;
+    }
+  }
+  text { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; fill: var(--ink); }
+  .t-dim { fill: var(--ink-2); }
+  .t-faint { fill: var(--ink-3); }
+  .t-num { font-variant-numeric: tabular-nums; }
+  .rule { stroke: var(--grid); stroke-width: 1; }
+  </style>
+  <rect width="900" height="354" fill="var(--surface)"/>
+  <text x="24" y="30" font-size="16" font-weight="650">The forecast reorders the day</text>
+  <text x="24" y="50" font-size="11.5" class="t-dim">Same park, same gallery, same appetite for both. Only the hours the rain falls in change.</text>
+  <text x="24" y="82" font-size="12" font-weight="600">Dry morning, wet afternoon</text>
+  <rect x="41" y="94" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <rect x="112" y="94" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <rect x="183" y="94" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <rect x="254" y="94" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <rect x="325" y="94" width="69" height="12" rx="2" fill="var(--ramp-4)"/>
+  <rect x="396" y="94" width="69" height="12" rx="2" fill="var(--ramp-4)"/>
+  <rect x="467" y="94" width="69" height="12" rx="2" fill="var(--ramp-4)"/>
+  <rect x="538" y="94" width="69" height="12" rx="2" fill="var(--ramp-4)"/>
+  <rect x="609" y="94" width="69" height="12" rx="2" fill="var(--ramp-4)"/>
+  <rect x="680" y="94" width="69" height="12" rx="2" fill="var(--ramp-4)"/>
+  <text x="760" y="104" font-size="10" class="t-faint">rain by the hour</text>
+  <rect x="111" y="120" width="88.75" height="16" rx="4" fill="var(--s3)"/>
+  <text x="207.75" y="132" font-size="10.5" class="t-dim">Parc de la Ciutadella · 10:00</text>
+  <rect x="229.33" y="146" width="106.5" height="16" rx="4" fill="var(--s2)"/>
+  <text x="343.83" y="158" font-size="10.5" class="t-dim">Museu Picasso · 11:40</text>
+  <text x="40" y="186" font-size="9.5" text-anchor="middle" class="t-faint">09:00</text>
+  <text x="182" y="186" font-size="9.5" text-anchor="middle" class="t-faint">11:00</text>
+  <text x="324" y="186" font-size="9.5" text-anchor="middle" class="t-faint">13:00</text>
+  <text x="466" y="186" font-size="9.5" text-anchor="middle" class="t-faint">15:00</text>
+  <text x="608" y="186" font-size="9.5" text-anchor="middle" class="t-faint">17:00</text>
+  <text x="750" y="186" font-size="9.5" text-anchor="middle" class="t-faint">19:00</text>
+  <text x="24" y="200" font-size="12" font-weight="600">Wet morning, dry afternoon</text>
+  <rect x="41" y="212" width="69" height="12" rx="2" fill="var(--ramp-4)"/>
+  <rect x="112" y="212" width="69" height="12" rx="2" fill="var(--ramp-4)"/>
+  <rect x="183" y="212" width="69" height="12" rx="2" fill="var(--ramp-4)"/>
+  <rect x="254" y="212" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <rect x="325" y="212" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <rect x="396" y="212" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <rect x="467" y="212" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <rect x="538" y="212" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <rect x="609" y="212" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <rect x="680" y="212" width="69" height="12" rx="2" fill="var(--ramp-1)"/>
+  <text x="760" y="222" font-size="10" class="t-faint">rain by the hour</text>
+  <rect x="111" y="238" width="106.5" height="16" rx="4" fill="var(--s2)"/>
+  <text x="225.5" y="250" font-size="10.5" class="t-dim">Museu Picasso · 10:00</text>
+  <rect x="247.08" y="264" width="88.75" height="16" rx="4" fill="var(--s3)"/>
+  <text x="343.83" y="276" font-size="10.5" class="t-dim">Parc de la Ciutadella · 11:55</text>
+  <text x="40" y="304" font-size="9.5" text-anchor="middle" class="t-faint">09:00</text>
+  <text x="182" y="304" font-size="9.5" text-anchor="middle" class="t-faint">11:00</text>
+  <text x="324" y="304" font-size="9.5" text-anchor="middle" class="t-faint">13:00</text>
+  <text x="466" y="304" font-size="9.5" text-anchor="middle" class="t-faint">15:00</text>
+  <text x="608" y="304" font-size="9.5" text-anchor="middle" class="t-faint">17:00</text>
+  <text x="750" y="304" font-size="9.5" text-anchor="middle" class="t-faint">19:00</text>
+  <rect x="24" y="333.18" width="9" height="9" rx="2" fill="var(--s2)"/>
+  <text x="38" y="340" font-size="11" class="t-dim">indoors</text>
+  <rect x="103.12" y="333.18" width="9" height="9" rx="2" fill="var(--s3)"/>
+  <text x="117.12" y="340" font-size="11" class="t-dim">outdoors</text>
+  <text x="260" y="340" font-size="11" class="t-dim">dry</text>
+  <rect x="286.48" y="333.18" width="14" height="9" rx="2" fill="var(--ramp-1)"/>
+  <rect x="302.48" y="333.18" width="14" height="9" rx="2" fill="var(--ramp-2)"/>
+  <rect x="318.48" y="333.18" width="14" height="9" rx="2" fill="var(--ramp-3)"/>
+  <rect x="334.48" y="333.18" width="14" height="9" rx="2" fill="var(--ramp-4)"/>
+  <text x="352.48" y="340" font-size="11" class="t-dim">rain likely</text>
+</svg>
