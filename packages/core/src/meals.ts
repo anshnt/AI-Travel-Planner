@@ -58,6 +58,17 @@ const DISPLACEMENT_THRESHOLD = 0.7;
  */
 const REPEAT_PENALTY = 0.18;
 
+/**
+ * The most extra travel a meal may add to a day.
+ *
+ * Twenty minutes buys a walk across a district or a couple of stops on the metro
+ * -- enough to reach a genuinely better restaurant, not enough to reorganise the
+ * day around one. Without this the meal pass will happily send a day 4 km south
+ * for the best tapas match and 4 km back north again, because a strong cuisine
+ * score comfortably outbids the soft travel penalty.
+ */
+const MAX_MEAL_DETOUR_MINUTES = 20;
+
 function repeatPenalty(visits: number): number {
   return REPEAT_PENALTY * visits * visits;
 }
@@ -226,6 +237,7 @@ export function scheduleMeals(
         startWindow: window,
         reasons: score.reasons,
         countsAsStop: false,
+        maxAddedTravelMinutes: MAX_MEAL_DETOUR_MINUTES,
       }));
 
       const booked = bookBestOption(specs, day, context, state);

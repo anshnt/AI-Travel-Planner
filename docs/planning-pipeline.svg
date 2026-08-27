@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340" width="900" height="340" role="img" aria-labelledby="t d">
+  <title id="t">The four planning passes</title>
+  <desc id="d">Constraints feed four passes: must-sees, repeated best-insertion, meals, then rehoming anything a meal displaced. The output is a timed itinerary with reasons.</desc>
+  <style>
+  :root {
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-3: #8a887f;
+    --grid: #e6e5e0;
+    --band: #eceae4;
+    --s1: #2a78d6;
+    --s2: #eb6834;
+    --s3: #1baf7a;
+    --ramp-1: #dbe8f8;
+    --ramp-2: #a9c8ee;
+    --ramp-3: #6ba1e0;
+    --ramp-4: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #8a887f;
+    --grid: #2e2e2b;
+    --band: #262623;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --ramp-1: #1e2a38;
+    --ramp-2: #26456b;
+    --ramp-3: #2c639f;
+    --ramp-4: #3987e5;
+    }
+  }
+  text { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif; fill: var(--ink); }
+  .t-dim { fill: var(--ink-2); }
+  .t-faint { fill: var(--ink-3); }
+  .t-num { font-variant-numeric: tabular-nums; }
+  .rule { stroke: var(--grid); stroke-width: 1; }
+  </style>
+  <rect width="900" height="340" fill="var(--surface)"/>
+  <text x="24" y="30" font-size="16" font-weight="650">How a plan gets built</text>
+  <text x="24" y="50" font-size="11.5" class="t-dim">Four passes over the same day objects. Every pass re-times each day from scratch rather than patching it.</text>
+  <rect x="24" y="70" width="58.96" height="24" rx="12" fill="var(--band)"/>
+  <text x="53.48" y="86" font-size="11" text-anchor="middle" class="t-dim">budget</text>
+  <rect x="90.96" y="70" width="65.12" height="24" rx="12" fill="var(--band)"/>
+  <text x="123.52" y="86" font-size="11" text-anchor="middle" class="t-dim">weather</text>
+  <rect x="164.08" y="70" width="102.08" height="24" rx="12" fill="var(--band)"/>
+  <text x="215.12" y="86" font-size="11" text-anchor="middle" class="t-dim">opening hours</text>
+  <rect x="274.16" y="70" width="89.76" height="24" rx="12" fill="var(--band)"/>
+  <text x="319.04" y="86" font-size="11" text-anchor="middle" class="t-dim">travel time</text>
+  <rect x="371.92" y="70" width="89.76" height="24" rx="12" fill="var(--band)"/>
+  <text x="416.8" y="86" font-size="11" text-anchor="middle" class="t-dim">restaurants</text>
+  <rect x="469.68" y="70" width="89.76" height="24" rx="12" fill="var(--band)"/>
+  <text x="514.56" y="86" font-size="11" text-anchor="middle" class="t-dim">preferences</text>
+  <rect x="24" y="126" width="199.5" height="112" rx="8" fill="var(--band)"/>
+  <rect x="24" y="126" width="3" height="112" rx="2" fill="var(--s3)"/>
+  <text x="40" y="150" font-size="12.5" font-weight="650">1 · Must-sees</text>
+  <text x="40" y="172" font-size="10.5" class="t-dim">placed first, before</text>
+  <text x="40" y="187" font-size="10.5" class="t-dim">the pool competes</text>
+  <text x="40" y="202" font-size="10.5" class="t-dim">for the same slots</text>
+  <path d="M227.5,182 L236.5,182 M232.5,178 L236.5,182 L232.5,186" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+  <rect x="241.5" y="126" width="199.5" height="112" rx="8" fill="var(--band)"/>
+  <rect x="241.5" y="126" width="3" height="112" rx="2" fill="var(--s1)"/>
+  <text x="257.5" y="150" font-size="12.5" font-weight="650">2 · Best-insertion</text>
+  <text x="257.5" y="172" font-size="10.5" class="t-dim">every candidate, every</text>
+  <text x="257.5" y="187" font-size="10.5" class="t-dim">position, every day —</text>
+  <text x="257.5" y="202" font-size="10.5" class="t-dim">commit the best gain</text>
+  <path d="M445,182 L454,182 M450,178 L454,182 L450,186" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+  <rect x="459" y="126" width="199.5" height="112" rx="8" fill="var(--band)"/>
+  <rect x="459" y="126" width="3" height="112" rx="2" fill="var(--s3)"/>
+  <text x="475" y="150" font-size="12.5" font-weight="650">3 · Meals</text>
+  <text x="475" y="172" font-size="10.5" class="t-dim">booked into their windows</text>
+  <text x="475" y="187" font-size="10.5" class="t-dim">once a route exists to</text>
+  <text x="475" y="202" font-size="10.5" class="t-dim">sit them on</text>
+  <path d="M662.5,182 L671.5,182 M667.5,178 L671.5,182 L667.5,186" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+  <rect x="676.5" y="126" width="199.5" height="112" rx="8" fill="var(--band)"/>
+  <rect x="676.5" y="126" width="3" height="112" rx="2" fill="var(--s3)"/>
+  <text x="692.5" y="150" font-size="12.5" font-weight="650">4 · Rehome</text>
+  <text x="692.5" y="172" font-size="10.5" class="t-dim">anything a meal</text>
+  <text x="692.5" y="187" font-size="10.5" class="t-dim">displaced gets another</text>
+  <text x="692.5" y="202" font-size="10.5" class="t-dim">chance elsewhere</text>
+  <line x1="24" y1="106" x2="876" y2="106" stroke="var(--grid)" stroke-width="1"/>
+  <line x1="450" y1="106" x2="450" y2="120" stroke="var(--ink-3)" stroke-width="1" opacity="0.5"/>
+  <rect x="24" y="264" width="852" height="42" rx="8" fill="var(--s1)"/>
+  <text x="40" y="290" font-size="12" font-weight="600" style="fill:var(--surface)">An itinerary: timed stops, travel legs, costs, and a reason for every decision</text>
+</svg>

@@ -235,6 +235,16 @@ export type InsertionSpec = {
   startWindow?: TimeWindow;
   reasons?: string[];
   countsAsStop: boolean;
+  /**
+   * Refuse an insertion that adds more than this much travel to the day.
+   *
+   * The travel penalty alone is a soft trade the score can outbid, which is right
+   * for a sightseeing stop: a place the traveller loves is worth a detour. It is
+   * wrong for a meal. Lunch is fungible -- there is almost always somewhere decent
+   * nearer -- so a restaurant that is a strong match on cuisine can otherwise win
+   * a detour that drags the whole day across the city and back.
+   */
+  maxAddedTravelMinutes?: number;
 };
 
 export type InsertionCandidate = {
@@ -302,6 +312,7 @@ export function bestInsertionForDay(
 
     if (addedCost > remainingBudget) continue;
     if (spentToday + addedCost > context.dailyBudget && visitCost > 0) continue;
+    if (spec.maxAddedTravelMinutes !== undefined && addedTravelMinutes > spec.maxAddedTravelMinutes) continue;
 
     const penalty = context.options.ignoreTravelPenalty
       ? 0

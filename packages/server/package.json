@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "build": "tsc -b tsconfig.json",
     "typecheck": "tsc -b tsconfig.json",
-    "demo": "npm run build -w @atp/core && tsx scripts/demo.ts"
+    "demo": "npm run build -w @atp/core && tsx scripts/demo.ts",
+    "diagrams": "npm run build -w @atp/core && tsx scripts/render-diagrams.ts"
   },
   "dependencies": {
     "@atp/core": "*",
