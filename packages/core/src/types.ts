@@ -275,6 +275,11 @@ export type Itinerary = {
   totals: ItineraryTotals;
   /** Objective value of the plan; higher is better. Only comparable between plans of the same request. */
   score: number;
+  /** What the route-optimisation pass changed, when it ran and found anything. */
+  optimisation?: {
+    travelMinutesSaved: number;
+    moves: string[];
+  };
   /** Candidates the planner considered and passed on, with the reason why. */
   rejected: Rejection[];
 };

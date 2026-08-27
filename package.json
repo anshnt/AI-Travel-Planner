@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "lint": "npm run typecheck",
     "clean": "rm -rf packages/*/dist apps/*/dist packages/*/*.tsbuildinfo",
-    "diagrams": "npm run diagrams -w @atp/server"
+    "diagrams": "npm run diagrams -w @atp/server",
+    "measure": "npm run measure -w @atp/server"
   },
   "devDependencies": {
     "concurrently": "^10.0.5",

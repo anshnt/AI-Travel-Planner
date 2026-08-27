@@ -1,4 +1,5 @@
 import { DEFAULT_FOOD_SHARE, DEFAULT_MEAL_WINDOWS, isEatery, scheduleMeals } from './meals.js';
+import { optimiseItinerary, planObjective, type OptimisationReport } from './optimise.js';
 import {
   bestInsertion,
   buildAnchor,
@@ -285,12 +286,20 @@ export function planTrip(request: PlanRequest, options: PlannerOptions = {}): It
     );
   }
 
+  // --- Pass 5: rearrange what pass 2 committed to too early ---
+  // Insertion decides each placement at the moment it makes it, so a stop added
+  // early can leave a detour a later addition would have avoided. This pass never
+  // adds or removes anything: the traveller gets the same trip, arranged better.
+  const optimisation = options.skipOptimisation
+    ? undefined
+    : optimiseItinerary(days, context);
+
   for (const place of eligible) {
     if (state.placed.has(place.id) || rejected.has(place.id)) continue;
     rejected.set(place.id, describeRejection(place, dates, context, days));
   }
 
-  return finalize(request, context, days, [...rejected.values()], mealOutcome.notesByDay);
+  return finalize(request, context, days, [...rejected.values()], mealOutcome.notesByDay, optimisation);
 }
 
 function biased(spec: InsertionSpec, bias: InsertionBias | undefined): InsertionSpec {
@@ -428,6 +437,7 @@ export function finalize(
   days: readonly WorkingDay[],
   rejected: Rejection[],
   mealNotesByDay: Map<number, string[]>,
+  optimisation?: OptimisationReport,
 ): Itinerary {
   const travelers = context.preferences.travelers;
 
@@ -485,10 +495,10 @@ export function finalize(
     0,
   );
 
-  const score = round2(
-    days.flatMap((day) => day.items).reduce((sum, entry) => sum + entry.baseScore, 0) -
-      (totals.travelMinutes / 60) * TRAVEL_PENALTY_PER_HOUR,
-  );
+  // The same objective the optimisation pass maximises, weather term included.
+  // Reporting a weather-blind figure made an accepted trade -- a few minutes more
+  // walking for a dry afternoon -- look like the score had gone down.
+  const score = round2(planObjective(days, context));
 
   return {
     destination: request.destination,
@@ -504,6 +514,7 @@ export function finalize(
     },
     score,
     rejected,
+    ...(optimisation && optimisation.moves.length > 0 ? { optimisation } : {}),
   };
 }
 

@@ -42,7 +42,7 @@
   </style>
   <rect width="900" height="340" fill="var(--surface)"/>
   <text x="24" y="30" font-size="16" font-weight="650">How a plan gets built</text>
-  <text x="24" y="50" font-size="11.5" class="t-dim">Four passes over the same day objects. Every pass re-times each day from scratch rather than patching it.</text>
+  <text x="24" y="50" font-size="11.5" class="t-dim">Five passes over the same day objects. Every pass re-times each day from scratch rather than patching it.</text>
   <rect x="24" y="70" width="58.96" height="24" rx="12" fill="var(--band)"/>
   <text x="53.48" y="86" font-size="11" text-anchor="middle" class="t-dim">budget</text>
   <rect x="90.96" y="70" width="65.12" height="24" rx="12" fill="var(--band)"/>
@@ -55,33 +55,40 @@
   <text x="416.8" y="86" font-size="11" text-anchor="middle" class="t-dim">restaurants</text>
   <rect x="469.68" y="70" width="89.76" height="24" rx="12" fill="var(--band)"/>
   <text x="514.56" y="86" font-size="11" text-anchor="middle" class="t-dim">preferences</text>
-  <rect x="24" y="126" width="199.5" height="112" rx="8" fill="var(--band)"/>
+  <rect x="24" y="126" width="159.2" height="112" rx="8" fill="var(--band)"/>
   <rect x="24" y="126" width="3" height="112" rx="2" fill="var(--s3)"/>
-  <text x="40" y="150" font-size="12.5" font-weight="650">1 · Must-sees</text>
-  <text x="40" y="172" font-size="10.5" class="t-dim">placed first, before</text>
-  <text x="40" y="187" font-size="10.5" class="t-dim">the pool competes</text>
-  <text x="40" y="202" font-size="10.5" class="t-dim">for the same slots</text>
-  <path d="M227.5,182 L236.5,182 M232.5,178 L236.5,182 L232.5,186" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
-  <rect x="241.5" y="126" width="199.5" height="112" rx="8" fill="var(--band)"/>
-  <rect x="241.5" y="126" width="3" height="112" rx="2" fill="var(--s1)"/>
-  <text x="257.5" y="150" font-size="12.5" font-weight="650">2 · Best-insertion</text>
-  <text x="257.5" y="172" font-size="10.5" class="t-dim">every candidate, every</text>
-  <text x="257.5" y="187" font-size="10.5" class="t-dim">position, every day —</text>
-  <text x="257.5" y="202" font-size="10.5" class="t-dim">commit the best gain</text>
-  <path d="M445,182 L454,182 M450,178 L454,182 L450,186" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
-  <rect x="459" y="126" width="199.5" height="112" rx="8" fill="var(--band)"/>
-  <rect x="459" y="126" width="3" height="112" rx="2" fill="var(--s3)"/>
-  <text x="475" y="150" font-size="12.5" font-weight="650">3 · Meals</text>
-  <text x="475" y="172" font-size="10.5" class="t-dim">booked into their windows</text>
-  <text x="475" y="187" font-size="10.5" class="t-dim">once a route exists to</text>
-  <text x="475" y="202" font-size="10.5" class="t-dim">sit them on</text>
-  <path d="M662.5,182 L671.5,182 M667.5,178 L671.5,182 L667.5,186" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
-  <rect x="676.5" y="126" width="199.5" height="112" rx="8" fill="var(--band)"/>
-  <rect x="676.5" y="126" width="3" height="112" rx="2" fill="var(--s3)"/>
-  <text x="692.5" y="150" font-size="12.5" font-weight="650">4 · Rehome</text>
-  <text x="692.5" y="172" font-size="10.5" class="t-dim">anything a meal</text>
-  <text x="692.5" y="187" font-size="10.5" class="t-dim">displaced gets another</text>
-  <text x="692.5" y="202" font-size="10.5" class="t-dim">chance elsewhere</text>
+  <text x="38" y="150" font-size="12" font-weight="650">1 · Must-sees</text>
+  <text x="38" y="172" font-size="10" class="t-dim">placed first, before</text>
+  <text x="38" y="187" font-size="10" class="t-dim">the pool competes</text>
+  <text x="38" y="202" font-size="10" class="t-dim">for the slots</text>
+  <path d="M185.2,182 L194.2,182 M190.2,178 L194.2,182 L190.2,186" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+  <rect x="197.2" y="126" width="159.2" height="112" rx="8" fill="var(--band)"/>
+  <rect x="197.2" y="126" width="3" height="112" rx="2" fill="var(--s1)"/>
+  <text x="211.2" y="150" font-size="12" font-weight="650">2 · Insertion</text>
+  <text x="211.2" y="172" font-size="10" class="t-dim">every candidate, every</text>
+  <text x="211.2" y="187" font-size="10" class="t-dim">position, every day —</text>
+  <text x="211.2" y="202" font-size="10" class="t-dim">best gain wins</text>
+  <path d="M358.4,182 L367.4,182 M363.4,178 L367.4,182 L363.4,186" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+  <rect x="370.4" y="126" width="159.2" height="112" rx="8" fill="var(--band)"/>
+  <rect x="370.4" y="126" width="3" height="112" rx="2" fill="var(--s3)"/>
+  <text x="384.4" y="150" font-size="12" font-weight="650">3 · Meals</text>
+  <text x="384.4" y="172" font-size="10" class="t-dim">into their windows,</text>
+  <text x="384.4" y="187" font-size="10" class="t-dim">once a route exists</text>
+  <text x="384.4" y="202" font-size="10" class="t-dim">to sit them on</text>
+  <path d="M531.6,182 L540.6,182 M536.6,178 L540.6,182 L536.6,186" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+  <rect x="543.6" y="126" width="159.2" height="112" rx="8" fill="var(--band)"/>
+  <rect x="543.6" y="126" width="3" height="112" rx="2" fill="var(--s3)"/>
+  <text x="557.6" y="150" font-size="12" font-weight="650">4 · Re-fill</text>
+  <text x="557.6" y="172" font-size="10" class="t-dim">booking meals opens</text>
+  <text x="557.6" y="187" font-size="10" class="t-dim">slots pass 2 never</text>
+  <text x="557.6" y="202" font-size="10" class="t-dim">saw</text>
+  <path d="M704.8,182 L713.8,182 M709.8,178 L713.8,182 L709.8,186" fill="none" stroke="var(--ink-3)" stroke-width="1.5"/>
+  <rect x="716.8" y="126" width="159.2" height="112" rx="8" fill="var(--band)"/>
+  <rect x="716.8" y="126" width="3" height="112" rx="2" fill="var(--s1)"/>
+  <text x="730.8" y="150" font-size="12" font-weight="650">5 · Rearrange</text>
+  <text x="730.8" y="172" font-size="10" class="t-dim">relocate, reverse,</text>
+  <text x="730.8" y="187" font-size="10" class="t-dim">change day, or wait</text>
+  <text x="730.8" y="202" font-size="10" class="t-dim">out a shower</text>
   <line x1="24" y1="106" x2="876" y2="106" stroke="var(--grid)" stroke-width="1"/>
   <line x1="450" y1="106" x2="450" y2="120" stroke="var(--ink-3)" stroke-width="1" opacity="0.5"/>
   <rect x="24" y="264" width="852" height="42" rx="8" fill="var(--s1)"/>

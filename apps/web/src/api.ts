@@ -105,6 +105,9 @@ function normalizeItinerary(itinerary: Itinerary): Itinerary {
       })),
     })),
     rejected: itinerary.rejected ?? [],
+    ...(itinerary.optimisation
+      ? { optimisation: { ...itinerary.optimisation, moves: itinerary.optimisation.moves ?? [] } }
+      : {}),
   };
 }
 
